@@ -94,7 +94,7 @@ const Chat = () => {
   };
 
   return (
-    <div className="flex h-screen flex-col bg-chat-bg">
+    <div className="flex h-screen flex-col">
       {/* Header */}
       <header className="border-b border-border bg-card px-4 py-3 shadow-soft">
         <div className="flex items-center justify-between">
@@ -116,7 +116,21 @@ const Chat = () => {
       </header>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div 
+        className="flex-1 overflow-y-auto p-4" 
+        style={{
+          backgroundColor: 'hsl(var(--chat-pattern-bg))',
+          opacity: 0.95,
+          backgroundImage: `
+            radial-gradient(circle, transparent 20%, hsl(var(--chat-pattern-bg)) 20%, hsl(var(--chat-pattern-bg)) 80%, transparent 80%, transparent),
+            radial-gradient(circle, transparent 20%, hsl(var(--chat-pattern-bg)) 20%, hsl(var(--chat-pattern-bg)) 80%, transparent 80%, transparent),
+            linear-gradient(hsl(var(--chat-pattern-color)) 2px, transparent 2px),
+            linear-gradient(90deg, hsl(var(--chat-pattern-color)) 2px, hsl(var(--chat-pattern-bg)) 2px)
+          `,
+          backgroundSize: '50px 50px, 50px 50px, 25px 25px, 25px 25px',
+          backgroundPosition: '0 0, 25px 25px, 0 -1px, -1px 0'
+        }}
+      >
         <div className="mx-auto max-w-3xl space-y-4">
           {messages.map((message) => (
             <div
