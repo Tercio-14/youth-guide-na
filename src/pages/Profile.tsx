@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/utils/api";
 
 const SUGGESTED_SKILLS = [
   "Plumbing", "Electrician", "Carpentry", "Painting", "Cooking",
@@ -21,11 +23,46 @@ const SUGGESTED_INTERESTS = [
 
 const Profile = () => {
   const navigate = useNavigate();
+  const { user, token, userProfile, updateUserProfile } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [ageBracket, setAgeBracket] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
   const [customSkill, setCustomSkill] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+
+  console.log('🏠 [Profile] Component mounted', {
+    hasUser: !!user,
+    hasToken: !!token,
+    hasProfile: !!userProfile,
+    userEmail: user?.email,
+    timestamp: new Date().toISOString()
+  });
+
+  // Load existing profile data if available
+  useEffect(() => {
+    console.log('🔄 [Profile] useEffect triggered - checking for existing profile', {
+      userProfile,
+      hasProfile: !!userProfile
+    });
+    
+    if (userProfile) {
+      console.log('📋 [Profile] Loading existing profile data', userProfile);
+      setFirstName(userProfile.firstName || "");
+      setAgeBracket(userProfile.ageBracket || "");
+      setSkills(userProfile.skills || []);
+      setInterests(userProfile.interests || []);
+      setIsEditing(true);
+      
+      console.log('✅ [Profile] Profile data loaded into form', {
+        firstName: userProfile.firstName,
+        ageBracket: userProfile.ageBracket,
+        skillsCount: userProfile.skills?.length || 0,
+        interestsCount: userProfile.interests?.length || 0
+      });
+    }
+  }, [userProfile]);
 
   const toggleSkill = (skill: string) => {
     if (skills.includes(skill)) {
@@ -54,17 +91,95 @@ const Profile = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('🚀 [Profile] Form submission started', {
+      firstName: `"${firstName}" (${typeof firstName}, length: ${firstName?.length})`,
+      ageBracket: `"${ageBracket}" (${typeof ageBracket}, length: ${ageBracket?.length})`,
+      skills: `${JSON.stringify(skills)} (${typeof skills}, length: ${skills?.length})`,
+      interests: `${JSON.stringify(interests)} (${typeof interests}, length: ${interests?.length})`,
+      isEditing,
+      hasToken: !!token,
+      userId: user?.uid
+    });
+    
     if (!firstName || !ageBracket || skills.length === 0 || interests.length === 0) {
+      console.warn('⚠️ [Profile] Form validation failed - missing required fields', {
+        hasFirstName: !!firstName,
+        hasAgeBracket: !!ageBracket,
+        skillsCount: skills.length,
+        interestsCount: interests.length
+      });
       toast.error("Please complete all sections");
       return;
     }
 
-    // TODO: Save profile to Firebase
-    toast.success(`Welcome, ${firstName}! Let's find opportunities for you.`);
-    navigate("/chat");
+    if (!token) {
+      console.error('❌ [Profile] No authentication token available');
+      toast.error("Authentication required. Please log in again.");
+      navigate("/auth");
+      return;
+    }
+
+    setLoading(true);
+    console.log('🔄 [Profile] Starting profile save API call...');
+    
+    try {
+      const profileData = {
+        firstName: firstName.trim(),
+        ageBracket,
+        skills,
+        interests
+      };
+      
+      console.log('📤 [Profile] Sending profile data to API', {
+        ...profileData,
+        skillsDetailed: profileData.skills.map((s, i) => `[${i}]: "${s}"`),
+        interestsDetailed: profileData.interests.map((s, i) => `[${i}]: "${s}"`)
+      });
+      
+      console.log('🔍 [Profile] Raw profile data for API:', JSON.stringify(profileData, null, 2));
+
+      const response = await apiClient.post('/users/profile', profileData, token);
+      
+      console.log('✅ [Profile] Profile saved successfully', {
+        response,
+        isEditing,
+        duration: Date.now() - Date.now() // This will show in API client logs
+      });
+
+      // Update the auth context with the new profile
+      if (response.profile) {
+        updateUserProfile(response.profile);
+        console.log('🔄 [Profile] Updated auth context with new profile data');
+      }
+
+      toast.success(
+        isEditing 
+          ? `Profile updated successfully, ${firstName}!` 
+          : `Welcome, ${firstName}! Let's find opportunities for you.`
+      );
+      
+      console.log('🎯 [Profile] Navigating to chat page');
+      navigate("/chat");
+      
+    } catch (error) {
+      console.error('💥 [Profile] Profile save failed', {
+        error: error.message,
+        stack: error.stack,
+        profileData: { firstName, ageBracket, skills, interests },
+        hasToken: !!token,
+        userId: user?.uid
+      });
+      
+      toast.error(
+        error.message || "Failed to save profile. Please try again."
+      );
+    } finally {
+      setLoading(false);
+      console.log('🏁 [Profile] Form submission completed');
+    }
   };
 
   return (
@@ -164,8 +279,20 @@ const Profile = () => {
               </p>
             </div>
 
-            <Button type="submit" className="w-full bg-gradient-warm" size="lg">
-              Start Finding Opportunities
+            <Button 
+              type="submit" 
+              className="w-full bg-gradient-warm" 
+              size="lg"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="flex items-center">
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  {isEditing ? "Updating Profile..." : "Saving Profile..."}
+                </span>
+              ) : (
+                isEditing ? "Update Profile" : "Start Finding Opportunities"
+              )}
             </Button>
           </form>
         </Card>

@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Send, Bookmark, Menu, User } from "lucide-react";
+import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
+import { Send, Bookmark, Menu, User, MessageCircle, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiClient } from "@/utils/api";
+import { toast } from "sonner";
 
 interface Message {
   id: string;
@@ -33,19 +37,66 @@ const QUICK_REPLIES = [
 
 const Chat = () => {
   const navigate = useNavigate();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "bot",
-      text: "Hi Tafeni — I'm YouthGuide NA. How can I help you today?",
-      timestamp: new Date(),
-    },
-  ]);
+  const { user, token, userProfile, logout } = useAuth();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const handleSendMessage = (text: string) => {
-    if (!text.trim()) return;
+  console.log('💬 [Chat] Component mounted', {
+    hasUser: !!user,
+    hasToken: !!token,
+    hasProfile: !!userProfile,
+    userEmail: user?.email,
+    profileName: userProfile?.firstName,
+    timestamp: new Date().toISOString()
+  });
+
+  // Initialize chat with personalized welcome message
+  useEffect(() => {
+    console.log('🎯 [Chat] Initializing chat with welcome message');
+    
+    const firstName = userProfile?.firstName || user?.displayName || 'there';
+    const welcomeMessage: Message = {
+      id: "welcome-" + Date.now(),
+      role: "bot",
+      text: `Hi ${firstName}! I'm YouthGuide NA. I can help you find job opportunities, training programs, and resources in Namibia. What are you looking for today?`,
+      timestamp: new Date(),
+    };
+    
+    setMessages([welcomeMessage]);
+    
+    console.log('✅ [Chat] Welcome message set', {
+      firstName,
+      messageId: welcomeMessage.id
+    });
+  }, [userProfile, user]);
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim()) {
+      console.warn('⚠️ [Chat] Empty message attempted');
+      return;
+    }
+
+    console.log('📝 [Chat] Sending message', {
+      message: text,
+      hasToken: !!token,
+      hasProfile: !!userProfile,
+      userId: user?.uid
+    });
+
+    if (!token) {
+      console.error('❌ [Chat] No authentication token available');
+      toast.error("Please log in to continue chatting");
+      navigate("/auth");
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -58,39 +109,88 @@ const Chat = () => {
     setInputText("");
     setIsTyping(true);
 
-    // Simulate bot response (TODO: Replace with actual RAG pipeline)
-    setTimeout(() => {
+    console.log('🔄 [Chat] Starting chat API call...');
+
+    try {
+      const chatData = {
+        message: text,
+        context: {
+          skills: userProfile?.skills || [],
+          interests: userProfile?.interests || [],
+          ageBracket: userProfile?.ageBracket,
+          firstName: userProfile?.firstName
+        }
+      };
+
+      console.log('📤 [Chat] Sending chat request with context', chatData);
+
+      const response = await apiClient.post('/chat', chatData, token);
+      
+      console.log('✅ [Chat] Received chat response', {
+        hasResponse: !!response.response,
+        hasOpportunities: !!response.opportunities,
+        opportunityCount: response.opportunities?.length || 0
+      });
+
       const botMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "bot",
-        text: "Great question! Here are 3 options I found for you:",
+        text: response.response || "I'm sorry, I couldn't generate a response right now. Please try again.",
         timestamp: new Date(),
-        opportunities: [
-          {
-            id: "opp1",
-            title: "Plumbing Apprenticeship",
-            category: "Training",
-            cost: "Free",
-            source: "City Youth Desk",
-            contact: "081234567",
-          },
-          {
-            id: "opp2",
-            title: "ICT Short Course",
-            category: "Training",
-            cost: "Free",
-            source: "NUST Outreach",
-            contact: "WhatsApp 081987654",
-          },
-        ],
+        opportunities: response.opportunities || []
       };
+
       setMessages((prev) => [...prev, botMessage]);
+      
+      console.log('💬 [Chat] Bot message added to conversation', {
+        messageId: botMessage.id,
+        opportunityCount: botMessage.opportunities?.length || 0
+      });
+
+    } catch (error) {
+      console.error('💥 [Chat] Chat API call failed', {
+        error: error.message,
+        stack: error.stack,
+        message: text,
+        hasToken: !!token,
+        userId: user?.uid
+      });
+
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "bot",
+        text: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, errorMessage]);
+      
+      toast.error("Chat service temporarily unavailable");
+    } finally {
       setIsTyping(false);
-    }, 1500);
+      console.log('🏁 [Chat] Message handling completed');
+    }
   };
 
   const handleQuickReply = (reply: string) => {
     handleSendMessage(reply);
+  };
+
+  const handleNavigate = (path: string) => {
+    setIsMenuOpen(false);
+    navigate(path);
+  };
+
+  const handleLogout = async () => {
+    console.log('🚪 [Chat] Logout requested from menu');
+    try {
+      await logout();
+      setIsMenuOpen(false);
+      navigate("/auth");
+    } catch (error) {
+      console.error('💥 [Chat] Logout failed from menu', error);
+      toast.error("Unable to log out. Please try again.");
+    }
   };
 
   return (
@@ -99,9 +199,35 @@ const Chat = () => {
       <header className="border-b border-border bg-card px-4 py-3 shadow-soft">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/")}>
-              <Menu className="h-5 w-5" />
-            </Button>
+            <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="left" className="w-72 sm:max-w-xs">
+                <div className="flex flex-col gap-6">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Signed in as</p>
+                    <p className="font-semibold">{userProfile?.firstName || user?.email}</p>
+                  </div>
+                  <nav className="flex flex-col gap-2">
+                    <Button variant="ghost" className="justify-start gap-3" onClick={() => handleNavigate("/chat")}>
+                      <MessageCircle className="h-4 w-4" /> Continue Chatting
+                    </Button>
+                    <Button variant="ghost" className="justify-start gap-3" onClick={() => handleNavigate("/saved")}>
+                      <Bookmark className="h-4 w-4" /> Saved Opportunities
+                    </Button>
+                    <Button variant="ghost" className="justify-start gap-3" onClick={() => handleNavigate("/profile")}>
+                      <User className="h-4 w-4" /> Edit Profile
+                    </Button>
+                    <Button variant="destructive" className="justify-start gap-3" onClick={handleLogout}>
+                      <LogOut className="h-4 w-4" /> Log out
+                    </Button>
+                  </nav>
+                </div>
+              </SheetContent>
+            </Sheet>
             <h1 className="text-lg font-semibold">YouthGuide NA</h1>
           </div>
           <div className="flex gap-2">
@@ -195,6 +321,9 @@ const Chat = () => {
               </div>
             </div>
           )}
+          
+          {/* Scroll anchor */}
+          <div ref={messagesEndRef} />
         </div>
       </div>
 
