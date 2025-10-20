@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { X } from "lucide-react";
+import { X, ArrowLeft, User as UserIcon, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
@@ -183,19 +184,56 @@ const Profile = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-hero p-4 py-8">
-      <div className="mx-auto max-w-2xl">
-        <Card className="p-6 shadow-medium md:p-8">
-          <div className="mb-6">
-            <h1 className="mb-2 text-2xl font-bold">Tell Us About You</h1>
-            <p className="text-muted-foreground">
-              This helps us find the best opportunities for you. We only need the basics.
-            </p>
+    <div className="min-h-screen bg-gradient-hero">
+      {/* Header with Back Button */}
+      <motion.header 
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="border-b border-border bg-card px-4 py-3 shadow-soft"
+      >
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate("/chat")}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div className="flex items-center gap-2">
+            <UserIcon className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-semibold">
+              {isEditing ? "Edit Profile" : "Create Profile"}
+            </h1>
           </div>
+        </div>
+      </motion.header>
+
+      <div className="mx-auto max-w-2xl p-4 py-8">
+        <motion.div
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="p-6 shadow-medium md:p-8">
+            <motion.div 
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mb-6"
+            >
+              <div className="mb-3 flex items-center gap-2">
+                <Sparkles className="h-6 w-6 text-primary" />
+                <h2 className="text-2xl font-bold">Tell Us About You</h2>
+              </div>
+              <p className="text-muted-foreground">
+                This helps us find the best opportunities for you. We only need the basics.
+              </p>
+            </motion.div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* First Name */}
-            <div className="space-y-2">
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="space-y-2"
+            >
               <Label htmlFor="firstName">What's your first name?</Label>
               <Input
                 id="firstName"
@@ -203,43 +241,67 @@ const Profile = () => {
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 required
+                className="transition-all duration-200 focus:scale-[1.02]"
               />
               <p className="text-xs text-muted-foreground">
                 We'll use this to make conversations feel personal.
               </p>
-            </div>
+            </motion.div>
 
             {/* Age Bracket */}
-            <div className="space-y-2">
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="space-y-2"
+            >
               <Label>How old are you?</Label>
               <div className="grid grid-cols-2 gap-3">
-                {["16-20", "21-25", "26-30", "31-35"].map((bracket) => (
-                  <Button
+                {["16-20", "21-25", "26-30", "31-35"].map((bracket, index) => (
+                  <motion.div
                     key={bracket}
-                    type="button"
-                    variant={ageBracket === bracket ? "default" : "outline"}
-                    onClick={() => setAgeBracket(bracket)}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.5 + index * 0.05 }}
                   >
-                    {bracket} years
-                  </Button>
+                    <Button
+                      type="button"
+                      variant={ageBracket === bracket ? "default" : "outline"}
+                      onClick={() => setAgeBracket(bracket)}
+                      className="w-full transition-all duration-200 hover:scale-105"
+                    >
+                      {bracket} years
+                    </Button>
+                  </motion.div>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
             {/* Skills */}
-            <div className="space-y-2">
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.6 }}
+              className="space-y-2"
+            >
               <Label>What are your top 3 skills?</Label>
               <div className="flex flex-wrap gap-2">
-                {SUGGESTED_SKILLS.map((skill) => (
-                  <Badge
+                {SUGGESTED_SKILLS.map((skill, index) => (
+                  <motion.div
                     key={skill}
-                    variant={skills.includes(skill) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleSkill(skill)}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.65 + index * 0.03 }}
                   >
-                    {skill}
-                    {skills.includes(skill) && <X className="ml-1 h-3 w-3" />}
-                  </Badge>
+                    <Badge
+                      variant={skills.includes(skill) ? "default" : "outline"}
+                      className="cursor-pointer transition-all duration-200 hover:scale-110"
+                      onClick={() => toggleSkill(skill)}
+                    >
+                      {skill}
+                      {skills.includes(skill) && <X className="ml-1 h-3 w-3" />}
+                    </Badge>
+                  </motion.div>
                 ))}
               </div>
               <div className="flex gap-2">
@@ -248,54 +310,83 @@ const Profile = () => {
                   value={customSkill}
                   onChange={(e) => setCustomSkill(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addCustomSkill())}
+                  className="transition-all duration-200 focus:scale-[1.02]"
                 />
                 <Button type="button" variant="outline" onClick={addCustomSkill}>
                   Add
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
+              <motion.p 
+                className="text-xs text-muted-foreground"
+                key={skills.join(",")}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
                 Selected: {skills.join(", ") || "None"}
-              </p>
-            </div>
+              </motion.p>
+            </motion.div>
 
             {/* Interests */}
-            <div className="space-y-2">
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.7 }}
+              className="space-y-2"
+            >
               <Label>What interests you most? (Choose up to 3)</Label>
               <div className="flex flex-wrap gap-2">
-                {SUGGESTED_INTERESTS.map((interest) => (
-                  <Badge
+                {SUGGESTED_INTERESTS.map((interest, index) => (
+                  <motion.div
                     key={interest}
-                    variant={interests.includes(interest) ? "default" : "outline"}
-                    className="cursor-pointer"
-                    onClick={() => toggleInterest(interest)}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.75 + index * 0.03 }}
                   >
-                    {interest}
-                    {interests.includes(interest) && <X className="ml-1 h-3 w-3" />}
-                  </Badge>
+                    <Badge
+                      variant={interests.includes(interest) ? "default" : "outline"}
+                      className="cursor-pointer transition-all duration-200 hover:scale-110"
+                      onClick={() => toggleInterest(interest)}
+                    >
+                      {interest}
+                      {interests.includes(interest) && <X className="ml-1 h-3 w-3" />}
+                    </Badge>
+                  </motion.div>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground">
+              <motion.p 
+                className="text-xs text-muted-foreground"
+                key={interests.join(",")}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
                 Selected: {interests.join(", ") || "None"}
-              </p>
-            </div>
+              </motion.p>
+            </motion.div>
 
-            <Button 
-              type="submit" 
-              className="w-full bg-gradient-warm" 
-              size="lg"
-              disabled={loading}
+            <motion.div
+              initial={{ y: 20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.8 }}
             >
-              {loading ? (
-                <span className="flex items-center">
-                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  {isEditing ? "Updating Profile..." : "Saving Profile..."}
-                </span>
-              ) : (
-                isEditing ? "Update Profile" : "Start Finding Opportunities"
-              )}
-            </Button>
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-warm" 
+                size="lg"
+                disabled={loading}
+              >
+                {loading ? (
+                  <span className="flex items-center">
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    {isEditing ? "Updating Profile..." : "Saving Profile..."}
+                  </span>
+                ) : (
+                  isEditing ? "Update Profile" : "Start Finding Opportunities"
+                )}
+              </Button>
+            </motion.div>
           </form>
         </Card>
+        </motion.div>
       </div>
     </div>
   );

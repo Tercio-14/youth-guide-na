@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
-import { Send, Bookmark, Menu, User, MessageCircle, LogOut } from "lucide-react";
+import { Bookmark, Menu, User, MessageCircle, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/utils/api";
 import { toast } from "sonner";
+import { AnimatedMessage } from "@/components/chat/AnimatedMessage";
+import { TypingIndicator } from "@/components/chat/TypingIndicator";
+import { ModernInput } from "@/components/chat/ModernInput";
+import { SuggestedActions } from "@/components/chat/SuggestedActions";
 
 interface Message {
   id: string;
@@ -28,11 +29,11 @@ interface Opportunity {
 }
 
 const QUICK_REPLIES = [
-  "Jobs near me",
-  "Free training",
-  "Make money fast",
-  "Learn online",
-  "Part-time work"
+  { text: "Jobs near me", icon: "💼" },
+  { text: "Free training", icon: "📚" },
+  { text: "Make money fast", icon: "💰" },
+  { text: "Learn online", icon: "💻" },
+  { text: "Part-time work", icon: "⏰" }
 ];
 
 const Chat = () => {
@@ -43,6 +44,12 @@ const Chat = () => {
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [conversationId, setConversationId] = useState<string>(() => {
+    // Generate new conversation ID on component mount
+    const newId = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    console.log('🆔 [Chat] Generated new conversation ID:', newId);
+    return newId;
+  });
 
   console.log('💬 [Chat] Component mounted', {
     hasUser: !!user,
@@ -86,6 +93,7 @@ const Chat = () => {
 
     console.log('📝 [Chat] Sending message', {
       message: text,
+      conversationId,
       hasToken: !!token,
       hasProfile: !!userProfile,
       userId: user?.uid
@@ -114,6 +122,7 @@ const Chat = () => {
     try {
       const chatData = {
         message: text,
+        conversationId,
         context: {
           skills: userProfile?.skills || [],
           interests: userProfile?.interests || [],
@@ -129,7 +138,8 @@ const Chat = () => {
       console.log('✅ [Chat] Received chat response', {
         hasResponse: !!response.response,
         hasOpportunities: !!response.opportunities,
-        opportunityCount: response.opportunities?.length || 0
+        opportunityCount: response.opportunities?.length || 0,
+        conversationId: response.conversationId
       });
 
       const botMessage: Message = {
@@ -258,69 +268,18 @@ const Chat = () => {
         }}
       >
         <div className="mx-auto max-w-3xl space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                  message.role === "user"
-                    ? "bg-chat-bubble-user text-white"
-                    : "bg-chat-bubble-bot shadow-soft"
-                }`}
-              >
-                <p className="text-sm">{message.text}</p>
-
-                {/* Render opportunities if present */}
-                {message.opportunities && (
-                  <div className="mt-3 space-y-2">
-                    {message.opportunities.map((opp) => (
-                      <Card key={opp.id} className="p-3">
-                        <div className="mb-2 flex items-start justify-between">
-                          <h4 className="font-semibold">{opp.title}</h4>
-                          <Badge variant="secondary" className="ml-2 text-xs">
-                            {opp.cost}
-                          </Badge>
-                        </div>
-                        <p className="mb-1 text-xs text-muted-foreground">
-                          <span className="font-medium">Category:</span> {opp.category}
-                        </p>
-                        <p className="mb-1 text-xs text-muted-foreground">
-                          <span className="font-medium">Source:</span> {opp.source}
-                        </p>
-                        <p className="mb-2 text-xs text-muted-foreground">
-                          <span className="font-medium">Contact:</span> {opp.contact}
-                        </p>
-                        <Button size="sm" variant="outline" className="w-full">
-                          <Bookmark className="mr-1 h-3 w-3" /> Save This
-                        </Button>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-
-                <p className="mt-1 text-xs opacity-60">
-                  {message.timestamp.toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </p>
-              </div>
-            </div>
+          {messages.map((message, index) => (
+            <AnimatedMessage 
+              key={message.id} 
+              role={message.role}
+              text={message.text}
+              timestamp={message.timestamp}
+              opportunities={message.opportunities}
+              isLast={index === messages.length - 1}
+            />
           ))}
 
-          {isTyping && (
-            <div className="flex justify-start">
-              <div className="rounded-2xl bg-chat-bubble-bot px-4 py-3 shadow-soft">
-                <div className="flex gap-1">
-                  <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
-                  <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground delay-100" />
-                  <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground delay-200" />
-                </div>
-              </div>
-            </div>
-          )}
+          {isTyping && <TypingIndicator />}
           
           {/* Scroll anchor */}
           <div ref={messagesEndRef} />
@@ -328,41 +287,28 @@ const Chat = () => {
       </div>
 
       {/* Quick Replies */}
-      <div className="border-t border-border bg-card px-4 py-2">
-        <div className="mx-auto flex max-w-3xl gap-2 overflow-x-auto pb-2">
-          {QUICK_REPLIES.map((reply) => (
-            <Button
-              key={reply}
-              variant="outline"
-              size="sm"
-              className="whitespace-nowrap"
-              onClick={() => handleQuickReply(reply)}
-            >
-              {reply}
-            </Button>
-          ))}
+      {messages.length <= 1 && (
+        <div className="border-t border-border bg-card px-4 py-2">
+          <div className="mx-auto max-w-3xl">
+            <SuggestedActions 
+              suggestions={QUICK_REPLIES}
+              onSelect={handleQuickReply}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Input Area */}
       <div className="border-t border-border bg-card p-4">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            handleSendMessage(inputText);
-          }}
-          className="mx-auto flex max-w-3xl gap-2"
-        >
-          <Input
-            placeholder="Ask me anything..."
+        <div className="mx-auto max-w-3xl">
+          <ModernInput 
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            className="flex-1"
+            onChange={setInputText}
+            onSend={() => handleSendMessage(inputText)}
+            disabled={isTyping}
+            placeholder="Ask me anything..."
           />
-          <Button type="submit" size="icon" className="bg-gradient-warm">
-            <Send className="h-4 w-4" />
-          </Button>
-        </form>
+        </div>
       </div>
     </div>
   );
