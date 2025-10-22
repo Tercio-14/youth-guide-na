@@ -4,6 +4,7 @@ import { MessageCircle, Users, Briefcase, GraduationCap } from "lucide-react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -24,9 +25,12 @@ const Landing = () => {
             <MessageCircle className="h-8 w-8 text-primary" />
             <h1 className="text-2xl font-bold text-foreground">YouthGuide NA</h1>
           </div>
-          <Button variant="outline" onClick={() => navigate("/auth")}>
-            Sign In
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button variant="outline" onClick={() => navigate("/auth")}>
+              Sign In
+            </Button>
+          </div>
         </div>
       </header>
 

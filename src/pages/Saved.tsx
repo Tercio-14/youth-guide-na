@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/utils/api";
 import { toast } from "sonner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface SavedOpportunity {
   id: string;
@@ -112,10 +113,11 @@ const Saved = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate("/chat")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <Bookmark className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-semibold">Saved Opportunities</h1>
           </div>
+          <ThemeToggle />
         </div>
       </motion.header>
 

@@ -8,54 +8,59 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 260 30% 97%;
-    --foreground: 260 15% 15%;
+    /* Light theme - white backgrounds, light purple accents, green for user, blue for buttons */
+    --background: 0 0% 100%; /* #ffffff */
+    --foreground: 0 0% 10%; /* Dark text for contrast */
 
-    --card: 0 0% 100%;
-    --card-foreground: 260 15% 15%;
+    --card: 0 0% 100%; /* #ffffff */
+    --card-foreground: 0 0% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 260 15% 15%;
+    --popover-foreground: 0 0% 10%;
 
-    /* Soft baby purple - primary */
-    --primary: 260 70% 75%;
+    /* Light purple accent - #b093ec */
+    --primary: 260 65% 75%; /* ~#b093ec */
     --primary-foreground: 0 0% 100%;
-    --primary-light: 260 80% 85%;
+    --primary-light: 260 75% 85%;
 
-    /* Light lavender - secondary */
+    /* Blue for buttons - #3b82f6 */
+    --button-blue: 217 91% 60%; /* ~#3b82f6 */
+    --button-blue-foreground: 0 0% 100%;
+
+    /* Secondary colors */
     --secondary: 270 60% 80%;
     --secondary-foreground: 260 20% 20%;
 
-    --muted: 260 20% 92%;
-    --muted-foreground: 260 10% 45%;
+    --muted: 260 25% 96%; /* Very light purple-tinted grey */
+    --muted-foreground: 0 0% 45%; /* Medium grey for secondary text */
 
     /* Soft violet accent */
-    --accent: 275 65% 70%;
+    --accent: 260 65% 75%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 260 15% 88%;
-    --input: 260 15% 88%;
-    --ring: 260 70% 75%;
+    --border: 0 0% 90%; /* Light border */
+    --input: 0 0% 90%;
+    --ring: 260 65% 75%;
 
     --radius: 1rem;
 
     /* Chat-specific tokens */
-    --chat-bubble-user: 260 70% 75%;
-    --chat-bubble-bot: 0 0% 100%;
-    --chat-bg: 260 30% 97%;
-    --chat-pattern-bg: 260 20% 95%;
-    --chat-pattern-color: 265 80% 65%;
+    --chat-bubble-user: 142 76% 48%; /* Green for user messages - #25d366 */
+    --chat-bubble-user-foreground: 0 0% 100%;
+    --chat-bubble-bot: 0 0% 100%; /* White for bot messages */
+    --chat-bubble-bot-foreground: 0 0% 10%;
+    --chat-bg: 260 30% 98%; /* Light purple tint for chat background */
 
     /* Gradients */
     --gradient-warm: linear-gradient(135deg, hsl(260 70% 75%) 0%, hsl(275 65% 70%) 100%);
     --gradient-hero: linear-gradient(180deg, hsl(260 30% 97%) 0%, hsl(270 25% 95%) 100%);
 
     /* Shadows */
-    --shadow-soft: 0 2px 8px hsl(260 15% 15% / 0.08);
-    --shadow-medium: 0 4px 16px hsl(260 15% 15% / 0.12);
+    --shadow-soft: 0 2px 8px hsl(0 0% 0% / 0.08);
+    --shadow-medium: 0 4px 16px hsl(0 0% 0% / 0.12);
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -68,55 +73,62 @@ All colors MUST be HSL.
   }
 
   .dark {
-    --background: 260 20% 12%;
-    --foreground: 260 15% 95%;
+    /* Dark theme - deep greys, softer purples, lighter blues */
+    --background: 0 0% 9.4%; /* #18181b - deep grey */
+    --foreground: 0 0% 95.7%; /* #f4f4f5 - light grey primary text */
 
-    --card: 260 18% 15%;
-    --card-foreground: 260 15% 95%;
+    --card: 260 12% 15%; /* #24212c - slightly purple-tinted dark card */
+    --card-foreground: 0 0% 95.7%; /* #f4f4f5 */
 
-    --popover: 260 18% 15%;
-    --popover-foreground: 260 15% 95%;
+    --popover: 260 12% 15%;
+    --popover-foreground: 0 0% 95.7%;
 
-    --primary: 260 70% 75%;
-    --primary-foreground: 0 0% 100%;
-    --primary-light: 260 80% 85%;
+    /* Softer purple - #c4a9ff */
+    --primary: 260 100% 83%; /* ~#c4a9ff */
+    --primary-foreground: 0 0% 10%;
+    --primary-light: 260 100% 88%;
+
+    /* Lighter blue for buttons - #60a5fa */
+    --button-blue: 213 94% 68%; /* ~#60a5fa */
+    --button-blue-foreground: 0 0% 10%;
 
     --secondary: 270 60% 70%;
-    --secondary-foreground: 0 0% 100%;
+    --secondary-foreground: 0 0% 95.7%;
 
-    --muted: 260 15% 20%;
-    --muted-foreground: 260 10% 65%;
+    --muted: 0 0% 18%; /* Dark grey for muted backgrounds */
+    --muted-foreground: 0 0% 63.1%; /* #a1a1aa - light grey for secondary text */
 
-    --accent: 275 65% 70%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 260 100% 83%;
+    --accent-foreground: 0 0% 10%;
 
     --destructive: 0 62.8% 50.6%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 260 15% 22%;
-    --input: 260 15% 22%;
-    --ring: 260 70% 75%;
+    --border: 0 0% 18%; /* #2e2e32 - subtle border */
+    --input: 0 0% 18%;
+    --ring: 260 100% 83%;
 
-    --chat-bubble-user: 260 70% 75%;
-    --chat-bubble-bot: 260 18% 18%;
-    --chat-bg: 260 20% 12%;
-    --chat-pattern-bg: 260 18% 15%;
-    --chat-pattern-color: 265 70% 60%;
+    /* Chat-specific tokens for dark mode */
+    --chat-bubble-user: 142 76% 48%; /* Keep green for user messages */
+    --chat-bubble-user-foreground: 0 0% 100%;
+    --chat-bubble-bot: 260 12% 18%; /* Dark grey for bot messages */
+    --chat-bubble-bot-foreground: 0 0% 95.7%;
+    --chat-bg: 0 0% 9.4%;
 
-    --gradient-warm: linear-gradient(135deg, hsl(260 70% 75%) 0%, hsl(275 65% 70%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(260 20% 12%) 0%, hsl(270 20% 15%) 100%);
+    --gradient-warm: linear-gradient(135deg, hsl(260 100% 83%) 0%, hsl(275 80% 75%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(0 0% 9.4%) 0%, hsl(260 12% 15%) 100%);
 
     --shadow-soft: 0 2px 8px hsl(0 0% 0% / 0.3);
     --shadow-medium: 0 4px 16px hsl(0 0% 0% / 0.4);
 
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 0 0% 9.4%;
+    --sidebar-foreground: 0 0% 95.7%;
+    --sidebar-primary: 213 94% 68%;
+    --sidebar-primary-foreground: 0 0% 10%;
+    --sidebar-accent: 260 12% 15%;
+    --sidebar-accent-foreground: 0 0% 95.7%;
+    --sidebar-border: 0 0% 18%;
+    --sidebar-ring: 260 100% 83%;
   }
 }
 

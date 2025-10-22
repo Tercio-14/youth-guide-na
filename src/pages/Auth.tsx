@@ -7,6 +7,7 @@ import { MessageCircle, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Auth = () => {
   const navigate = useNavigate();
@@ -133,7 +134,12 @@ const Auth = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-hero p-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-hero p-4 relative">
+      {/* Floating Theme Toggle */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      
       <Card className="w-full max-w-md p-8 shadow-medium">
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">

@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/utils/api";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const SUGGESTED_SKILLS = [
   "Plumbing", "Electrician", "Carpentry", "Painting", "Cooking",
@@ -195,12 +196,13 @@ const Profile = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate("/chat")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <UserIcon className="h-5 w-5 text-primary" />
             <h1 className="text-lg font-semibold">
               {isEditing ? "Edit Profile" : "Create Profile"}
             </h1>
           </div>
+          <ThemeToggle />
         </div>
       </motion.header>
 
@@ -304,6 +306,29 @@ const Profile = () => {
                   </motion.div>
                 ))}
               </div>
+              
+              {/* Display custom skills as removable badges */}
+              {skills.filter(skill => !SUGGESTED_SKILLS.includes(skill)).length > 0 && (
+                <div className="mt-3">
+                  <p className="text-sm font-medium mb-2">Your custom skills:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {skills
+                      .filter(skill => !SUGGESTED_SKILLS.includes(skill))
+                      .map((skill) => (
+                        <Badge
+                          key={skill}
+                          variant="default"
+                          className="cursor-pointer transition-all duration-200 hover:scale-110"
+                          onClick={() => setSkills(skills.filter(s => s !== skill))}
+                        >
+                          {skill}
+                          <X className="ml-1 h-3 w-3" />
+                        </Badge>
+                      ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex gap-2">
                 <Input
                   placeholder="Add your own skill..."
