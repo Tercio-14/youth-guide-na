@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, ArrowLeft, User as UserIcon, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -28,6 +29,9 @@ const Profile = () => {
   const { user, token, userProfile, updateUserProfile } = useAuth();
   const [firstName, setFirstName] = useState("");
   const [ageBracket, setAgeBracket] = useState("");
+  const [location, setLocation] = useState("");
+  const [education, setEducation] = useState("");
+  const [employmentStatus, setEmploymentStatus] = useState("");
   const [skills, setSkills] = useState<string[]>([]);
   const [interests, setInterests] = useState<string[]>([]);
   const [customSkill, setCustomSkill] = useState("");
@@ -53,6 +57,9 @@ const Profile = () => {
       console.log('📋 [Profile] Loading existing profile data', userProfile);
       setFirstName(userProfile.firstName || "");
       setAgeBracket(userProfile.ageBracket || "");
+      setLocation(userProfile.location || "");
+      setEducation(userProfile.education || "");
+      setEmploymentStatus(userProfile.employmentStatus || "");
       setSkills(userProfile.skills || []);
       setInterests(userProfile.interests || []);
       setIsEditing(true);
@@ -99,6 +106,9 @@ const Profile = () => {
     console.log('🚀 [Profile] Form submission started', {
       firstName: `"${firstName}" (${typeof firstName}, length: ${firstName?.length})`,
       ageBracket: `"${ageBracket}" (${typeof ageBracket}, length: ${ageBracket?.length})`,
+      location: `"${location}" (${typeof location}, length: ${location?.length})`,
+      education: `"${education}" (${typeof education}, length: ${education?.length})`,
+      employmentStatus: `"${employmentStatus}" (${typeof employmentStatus}, length: ${employmentStatus?.length})`,
       skills: `${JSON.stringify(skills)} (${typeof skills}, length: ${skills?.length})`,
       interests: `${JSON.stringify(interests)} (${typeof interests}, length: ${interests?.length})`,
       isEditing,
@@ -131,6 +141,9 @@ const Profile = () => {
       const profileData = {
         firstName: firstName.trim(),
         ageBracket,
+        location: location.trim(),
+        education,
+        employmentStatus,
         skills,
         interests
       };
@@ -279,11 +292,80 @@ const Profile = () => {
               </div>
             </motion.div>
 
-            {/* Skills */}
+            {/* Location */}
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.5 }}
+              className="space-y-2"
+            >
+              <Label htmlFor="location">Where do you live? (Town/City)</Label>
+              <Input
+                id="location"
+                placeholder="e.g., Windhoek, Walvis Bay"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                className="transition-all duration-200 focus:scale-[1.02]"
+              />
+              <p className="text-xs text-muted-foreground">
+                Helps us find opportunities near you.
+              </p>
+            </motion.div>
+
+            {/* Education Level */}
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.55 }}
+              className="space-y-2"
+            >
+              <Label htmlFor="education">Highest Education Level</Label>
+              <Select value={education} onValueChange={setEducation}>
+                <SelectTrigger id="education" className="transition-all duration-200 focus:scale-[1.02]">
+                  <SelectValue placeholder="Select your education level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="None">None</SelectItem>
+                  <SelectItem value="Grade 10">Grade 10</SelectItem>
+                  <SelectItem value="Grade 12">Grade 12</SelectItem>
+                  <SelectItem value="Vocational">Vocational</SelectItem>
+                  <SelectItem value="Tertiary">Tertiary</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Helps match you with suitable training programs.
+              </p>
+            </motion.div>
+
+            {/* Employment Status */}
             <motion.div 
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.6 }}
+              className="space-y-2"
+            >
+              <Label htmlFor="employmentStatus">Current Employment or Study Status</Label>
+              <Select value={employmentStatus} onValueChange={setEmploymentStatus}>
+                <SelectTrigger id="employmentStatus" className="transition-all duration-200 focus:scale-[1.02]">
+                  <SelectValue placeholder="Select your status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Unemployed">Unemployed</SelectItem>
+                  <SelectItem value="Part-time">Part-time</SelectItem>
+                  <SelectItem value="Studying">Studying</SelectItem>
+                  <SelectItem value="Full-time job">Full-time job</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Helps recommend flexible or full-time opportunities.
+              </p>
+            </motion.div>
+
+            {/* Skills */}
+            <motion.div 
+              initial={{ x: -20, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.65 }}
               className="space-y-2"
             >
               <Label>What are your top 3 skills?</Label>
@@ -355,7 +437,7 @@ const Profile = () => {
             <motion.div 
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
-              transition={{ delay: 0.7 }}
+              transition={{ delay: 0.75 }}
               className="space-y-2"
             >
               <Label>What interests you most? (Choose up to 3)</Label>

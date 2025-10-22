@@ -420,7 +420,7 @@ const Chat = () => {
                               className={`w-full text-left p-2.5 rounded-md border transition-colors ${
                                 conv.id === conversationId
                                   ? 'bg-primary/10 border-primary'
-                                  : 'bg-card border-border hover:bg-accent'
+                                  : 'bg-card border-border hover:bg-primary/5'
                               }`}
                             >
                               <p className="font-medium text-xs line-clamp-2 mb-1">
