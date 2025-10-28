@@ -3,15 +3,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { MessageCircle, Mail } from "lucide-react";
+import { MessageCircle, Mail, WifiOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOffline } from "@/contexts/OfflineContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const Auth = () => {
   const navigate = useNavigate();
   const { login, register, loginWithGoogle } = useAuth();
+  const { isOffline } = useOffline();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -153,6 +156,30 @@ const Auth = () => {
           </p>
         </div>
 
+        {/* Offline Mode Alert */}
+        {isOffline && (
+          <Alert variant="warning" className="mb-6">
+            <WifiOff className="h-4 w-4" />
+            <AlertDescription>
+              <div className="space-y-2">
+                <p className="font-medium">You're currently offline</p>
+                <p className="text-sm">
+                  Authentication requires an internet connection. 
+                  If you were previously logged in, you can still access the chat with cached data.
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2"
+                  onClick={() => navigate('/chat')}
+                >
+                  Continue to Chat (Offline Mode)
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -213,12 +240,17 @@ const Auth = () => {
           <Button 
             type="submit" 
             className="w-full bg-gradient-warm" 
-            disabled={loading}
+            disabled={loading || isOffline}
           >
             {loading ? (
               <span className="flex items-center">
                 <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
                 {isLogin ? "Signing in..." : "Creating account..."}
+              </span>
+            ) : isOffline ? (
+              <span className="flex items-center">
+                <WifiOff className="mr-2 h-4 w-4" />
+                Authentication Unavailable Offline
               </span>
             ) : (
               isLogin ? "Sign In" : "Create Account"
@@ -243,14 +275,16 @@ const Auth = () => {
             variant="outline"
             className="w-full mt-4"
             onClick={handleGoogleSignIn}
-            disabled={loading}
+            disabled={loading || isOffline}
           >
             {loading ? (
               <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent"></div>
+            ) : isOffline ? (
+              <WifiOff className="mr-2 h-4 w-4" />
             ) : (
               <Mail className="mr-2 h-4 w-4" />
             )}
-            {loading ? "Connecting..." : "Continue with Google"}
+            {loading ? "Connecting..." : isOffline ? "Unavailable Offline" : "Continue with Google"}
           </Button>
         </div>
 

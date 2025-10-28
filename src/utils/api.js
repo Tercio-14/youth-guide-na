@@ -2,6 +2,33 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 class ApiClient {
+  constructor() {
+    // OFFLINE MODE: Will be set by useOffline hook
+    this.isOfflineMode = false;
+  }
+
+  // OFFLINE MODE: Set offline mode status (called from components using useOffline)
+  setOfflineMode(isOffline) {
+    if (this.isOfflineMode !== isOffline) {
+      console.log(`🔄 [API] Mode switched: ${isOffline ? 'OFFLINE' : 'ONLINE'}`);
+      this.isOfflineMode = isOffline;
+    }
+  }
+
+  // OFFLINE MODE: Route endpoint based on mode
+  getEndpoint(endpoint) {
+    // Normalize endpoint to always start with '/'
+    const ep = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+    // If offline, prefix all non-offline endpoints with /offline
+    // Example: '/chat' -> '/offline/chat', '/chats/123' -> '/offline/chats/123'
+    if (this.isOfflineMode && !ep.startsWith('/offline')) {
+      const offlineEndpoint = `/offline${ep}`;
+      console.log(`🔀 [API] Routing to offline: ${ep} → ${offlineEndpoint}`);
+      return offlineEndpoint;
+    }
+    return ep;
+  }
+
   generateRequestId() {
     return Math.random().toString(36).substr(2, 9);
   }
@@ -9,7 +36,10 @@ class ApiClient {
   async request(endpoint, options = {}) {
     const requestId = this.generateRequestId();
     const startTime = Date.now();
-    const url = `${API_BASE_URL}${endpoint}`;
+    
+    // OFFLINE MODE: Route to offline endpoint if in offline mode
+    const routedEndpoint = this.getEndpoint(endpoint);
+    const url = `${API_BASE_URL}${routedEndpoint}`;
     
     const config = {
       headers: {
@@ -26,11 +56,12 @@ class ApiClient {
     }
 
     // Log the request start
-    console.log(`🔄 [API-${requestId}] ${options.method || 'GET'} ${endpoint} - Starting`, {
+    console.log(`🔄 [API-${requestId}] ${options.method || 'GET'} ${routedEndpoint} - Starting ${this.isOfflineMode ? '(OFFLINE)' : '(ONLINE)'}`, {
       url,
       method: options.method || 'GET',
       hasAuth: !!config.headers.Authorization,
       hasBody: !!options.body,
+      isOffline: this.isOfflineMode,
       timestamp: new Date().toISOString()
     });
 

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Smile } from "lucide-react";
+import { Send, Paperclip, Smile, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ interface ModernInputProps {
   onSend: () => void;
   disabled?: boolean;
   placeholder?: string;
+  isOffline?: boolean;
 }
 
 export const ModernInput = ({
@@ -17,7 +18,8 @@ export const ModernInput = ({
   onChange,
   onSend,
   disabled = false,
-  placeholder = "Type a message..."
+  placeholder = "Type a message...",
+  isOffline = false
 }: ModernInputProps) => {
   const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -40,6 +42,11 @@ export const ModernInput = ({
   };
 
   const canSend = value.trim().length > 0 && !disabled;
+  
+  // Update placeholder when offline
+  const effectivePlaceholder = isOffline 
+    ? "Offline mode - Limited functionality..." 
+    : placeholder;
 
   return (
     <motion.div
@@ -48,12 +55,22 @@ export const ModernInput = ({
       className={cn(
         "relative flex items-end gap-2 rounded-3xl bg-white dark:bg-zinc-800",
         "border-2 transition-all duration-200",
-        isFocused 
-          ? "border-[#25D366] shadow-lg shadow-[#25D366]/10" 
-          : "border-zinc-200 dark:border-zinc-700 shadow-sm",
+        isOffline
+          ? "border-yellow-400 dark:border-yellow-600 bg-yellow-50/50 dark:bg-yellow-900/10"
+          : isFocused 
+            ? "border-[#25D366] shadow-lg shadow-[#25D366]/10" 
+            : "border-zinc-200 dark:border-zinc-700 shadow-sm",
         "p-2"
       )}
     >
+      {/* Offline Indicator */}
+      {isOffline && (
+        <div className="absolute -top-8 left-0 right-0 flex items-center justify-center gap-1.5 text-xs text-yellow-600 dark:text-yellow-400">
+          <WifiOff className="size-3" />
+          <span>Offline mode</span>
+        </div>
+      )}
+      
       {/* Emoji Button (Optional) */}
       <Button
         type="button"
@@ -74,7 +91,7 @@ export const ModernInput = ({
           onKeyDown={handleKeyDown}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
-          placeholder={placeholder}
+          placeholder={effectivePlaceholder}
           disabled={disabled}
           rows={1}
           className={cn(
