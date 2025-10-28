@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Bot, User, Bookmark, BookmarkCheck, ExternalLink } from "lucide-react";
+import { Bot, User, Bookmark, BookmarkCheck, ExternalLink, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ interface AnimatedMessageProps {
   timestamp: Date;
   opportunities?: Opportunity[];
   isLast?: boolean;
+  conversationId?: string;
 }
 
 export const AnimatedMessage = ({ 
@@ -35,12 +36,15 @@ export const AnimatedMessage = ({
   text, 
   timestamp, 
   opportunities,
-  isLast 
+  isLast,
+  conversationId
 }: AnimatedMessageProps) => {
   const isUser = role === "user";
   const { token } = useAuth();
   const [savedStates, setSavedStates] = useState<Record<string, boolean>>({});
   const [savingStates, setSavingStates] = useState<Record<string, boolean>>({});
+  const [feedbackStates, setFeedbackStates] = useState<Record<string, 'helpful' | 'not_relevant' | null>>({});
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState<Record<string, boolean>>({});
 
   const handleSaveToggle = async (opportunity: Opportunity) => {
     if (!token) {
@@ -73,6 +77,42 @@ export const AnimatedMessage = ({
 
   const handleOpenURL = (url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleFeedback = async (opportunityId: string, feedbackType: 'helpful' | 'not_relevant') => {
+    if (!token) {
+      toast.error("Please log in to provide feedback");
+      return;
+    }
+
+    // Prevent duplicate feedback submission
+    if (feedbackStates[opportunityId]) {
+      toast.info("You've already provided feedback for this opportunity");
+      return;
+    }
+
+    setFeedbackSubmitting(prev => ({ ...prev, [opportunityId]: true }));
+
+    try {
+      await apiClient.submitFeedback(
+        opportunityId,
+        feedbackType,
+        conversationId || 'unknown',
+        token
+      );
+      
+      setFeedbackStates(prev => ({ ...prev, [opportunityId]: feedbackType }));
+      toast.success(
+        feedbackType === 'helpful' 
+          ? "Thanks for your feedback! 👍" 
+          : "Feedback noted. We'll improve our recommendations. 👎"
+      );
+    } catch (error) {
+      console.error('Failed to submit feedback:', error);
+      toast.error("Failed to submit feedback. Please try again.");
+    } finally {
+      setFeedbackSubmitting(prev => ({ ...prev, [opportunityId]: false }));
+    }
   };
 
   return (
@@ -211,6 +251,30 @@ export const AnimatedMessage = ({
                           {opp.description}
                         </p>
                       )}
+
+                      {/* Feedback Buttons */}
+                      <div className="flex gap-2 mb-2">
+                        <Button
+                          variant={feedbackStates[opp.id] === 'helpful' ? 'default' : 'outline'}
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleFeedback(opp.id, 'helpful')}
+                          disabled={feedbackSubmitting[opp.id] || !!feedbackStates[opp.id]}
+                        >
+                          <ThumbsUp className="h-3 w-3 mr-1" />
+                          Helpful
+                        </Button>
+                        <Button
+                          variant={feedbackStates[opp.id] === 'not_relevant' ? 'default' : 'outline'}
+                          size="sm"
+                          className="h-7 text-xs"
+                          onClick={() => handleFeedback(opp.id, 'not_relevant')}
+                          disabled={feedbackSubmitting[opp.id] || !!feedbackStates[opp.id]}
+                        >
+                          <ThumbsDown className="h-3 w-3 mr-1" />
+                          Not Relevant
+                        </Button>
+                      </div>
 
                       <div className="flex items-center justify-between text-xs text-zinc-500">
                         {opp.date_posted && (

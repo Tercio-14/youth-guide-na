@@ -569,6 +569,7 @@ const Chat = () => {
                   timestamp={message.timestamp}
                   opportunities={message.opportunities}
                   isLast={index === messages.length - 1}
+                  conversationId={conversationId}
                 />
               ))}
 

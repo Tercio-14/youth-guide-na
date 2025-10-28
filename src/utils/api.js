@@ -134,6 +134,36 @@ class ApiClient {
       headers: token ? { Authorization: `Bearer ${token}` } : {}
     });
   }
+
+  // Feedback API methods
+  async submitFeedback(opportunityId, feedback, conversationId, token) {
+    return this.post('/feedback', {
+      opportunityId,
+      feedback,
+      conversationId
+    }, token);
+  }
+
+  async getOpportunityFeedback(opportunityId, token = null) {
+    return this.get(`/feedback/opportunity/${opportunityId}`, token);
+  }
+
+  async getUserFeedbackHistory(token) {
+    return this.get('/feedback/user', token);
+  }
+
+  // Config API methods
+  async getDataSource() {
+    return this.get('/config/data-source');
+  }
+
+  async switchDataSource(source, token) {
+    return this.post('/config/data-source', { source }, token);
+  }
+
+  async resetDataSource(token) {
+    return this.post('/config/reset', {}, token);
+  }
 }
 
 export const apiClient = new ApiClient();
