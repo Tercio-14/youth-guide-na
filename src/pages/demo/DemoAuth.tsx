@@ -3,7 +3,7 @@
  * Accepts any credentials - for UI/UX testing only
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,10 +12,18 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { speakPageWelcome } from "@/utils/tts";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const DemoAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setTimeout(() => {
+      speakPageWelcome('demoAuthWelcome');
+    }, 1000);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,20 +37,22 @@ const DemoAuth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
       {/* Banner */}
-      <div className="fixed top-0 left-0 right-0 bg-yellow-100 border-b border-yellow-300 py-2 text-center z-50">
-        <p className="text-sm font-medium text-yellow-900">
+      <div className="fixed top-0 left-0 right-0 bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-300 dark:border-yellow-700 py-2 flex items-center justify-between px-4 z-50">
+        <div></div>
+        <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
           🧪 <strong>Demo Mode</strong> - Any credentials will work | No real authentication
         </p>
+        <ThemeToggle />
       </div>
 
       <div className="w-full max-w-md mt-12">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            <span className="text-blue-600">YouthGuide</span> NA
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            <span className="bg-gradient-warm bg-clip-text text-transparent">YouthGuide</span> NA
           </h1>
-          <p className="text-gray-600">Demo Mode - UI/UX Testing</p>
+          <p className="text-muted-foreground">Demo Mode - UI/UX Testing</p>
         </div>
 
         <Tabs defaultValue="login" className="w-full">

@@ -12,6 +12,7 @@ import { ModernInput } from "@/components/chat/ModernInput";
 import { SuggestedActions } from "@/components/chat/SuggestedActions";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { tts, speakPageWelcome } from "@/utils/tts";
 
 interface Message {
   id: string;
@@ -97,6 +98,13 @@ const Chat = () => {
     };
     
     setMessages([welcomeMessage]);
+    
+    // Speak welcome message after a short delay
+    setTimeout(() => {
+      if (tts.isEnabled()) {
+        tts.speak(welcomeMessage.text);
+      }
+    }, 1000);
     
     console.log('✅ [Chat] Welcome message initialized', {
       firstName,
@@ -265,6 +273,22 @@ const Chat = () => {
       };
 
       setMessages((prev) => [...prev, botMessage]);
+      
+      // Speak bot response if voice is enabled
+      if (tts.isEnabled()) {
+        let speechText = botMessage.text;
+        
+        // Add opportunity titles if present
+        if (botMessage.opportunities && botMessage.opportunities.length > 0) {
+          const opportunityTitles = botMessage.opportunities
+            .slice(0, 3) // Only speak first 3 to avoid being too long
+            .map(opp => opp.title)
+            .join(', ');
+          speechText += `. I found these opportunities: ${opportunityTitles}.`;
+        }
+        
+        tts.speak(speechText);
+      }
       
       console.log('💬 [Chat] Bot message added to conversation', {
         messageId: botMessage.id,

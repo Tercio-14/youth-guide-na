@@ -12,6 +12,9 @@ import { Bookmark, Menu, User, LogOut, PlusSquare, Send, Bot, Loader2 } from "lu
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { demoApi } from "@/config/demo";
+import { VoiceToggle } from "@/components/VoiceToggle";
+import { tts, speakPageWelcome } from "@/utils/tts";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Message {
   id: string;
@@ -47,6 +50,11 @@ const DemoChat = () => {
       timestamp: new Date().toISOString()
     };
     setMessages([welcomeMessage]);
+    
+    // Speak welcome message after a short delay
+    setTimeout(() => {
+      speakPageWelcome('demoChatWelcome');
+    }, 1000);
   }, []);
 
   // Auto-scroll to bottom
@@ -84,6 +92,17 @@ const DemoChat = () => {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+      
+      // Speak the response with opportunity titles
+      if (tts.isEnabled()) {
+        let speechText = response.response;
+        if (response.opportunities && response.opportunities.length > 0) {
+          speechText += ". I found the following opportunities: ";
+          speechText += response.opportunities.map((opp: { title: string }) => opp.title).join(". ");
+        }
+        tts.speak(speechText);
+      }
+      
       toast.success("Response received (demo mode)");
     } catch (error) {
       console.error("Demo chat error:", error);
@@ -116,16 +135,16 @@ const DemoChat = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+    <div className="flex flex-col h-screen bg-gradient-hero">
       {/* Banner */}
-      <div className="bg-yellow-100 border-b border-yellow-300 py-2 text-center">
-        <p className="text-sm font-medium text-yellow-900">
+      <div className="bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-300 dark:border-yellow-700 py-2 text-center">
+        <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
           🧪 <strong>Demo Mode</strong> - UI/UX Testing | Mock responses only
         </p>
       </div>
 
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <header className="bg-card border-b border-border px-4 py-3 flex items-center justify-between shadow-soft">
         <div className="flex items-center gap-3">
           <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
             <SheetTrigger asChild>
@@ -198,18 +217,35 @@ const DemoChat = () => {
           </div>
         </div>
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={startNewConversation}
-        >
-          <PlusSquare className="h-4 w-4 mr-2" />
-          New Chat
-        </Button>
+        <div className="flex items-center gap-2">
+          <VoiceToggle />
+          <ThemeToggle />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={startNewConversation}
+          >
+            <PlusSquare className="h-4 w-4 mr-2" />
+            New Chat
+          </Button>
+        </div>
       </header>
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+      <div 
+        className="flex-1 overflow-y-auto px-4 py-6 space-y-4"
+        style={{
+          background: `linear-gradient(to bottom, hsl(var(--chat-bg)), hsl(var(--muted)))`,
+          backgroundImage: `
+            linear-gradient(to bottom, hsl(var(--chat-bg)), hsl(var(--muted))),
+            radial-gradient(circle at 20% 50%, hsl(var(--primary) / 0.03) 0%, transparent 50%),
+            radial-gradient(circle at 80% 80%, hsl(var(--primary) / 0.02) 0%, transparent 50%),
+            radial-gradient(hsl(var(--muted-foreground) / 0.05) 1px, transparent 1px)
+          `,
+          backgroundSize: '100% 100%, 100% 100%, 100% 100%, 40px 40px',
+          backgroundPosition: '0 0, 0 0, 0 0, 0 0'
+        }}
+      >
         {messages.map((message) => (
           <div
             key={message.id}
@@ -218,8 +254,8 @@ const DemoChat = () => {
             <Card
               className={`max-w-[80%] p-4 ${
                 message.role === "user"
-                  ? "bg-blue-600 text-white"
-                  : "bg-white"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card border-border"
               }`}
             >
               <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -227,25 +263,25 @@ const DemoChat = () => {
               {message.opportunities && message.opportunities.length > 0 && (
                 <div className="mt-4 space-y-2">
                   {message.opportunities.map((opp) => (
-                    <Card key={opp.id} className="p-3 bg-gray-50">
-                      <h4 className="font-semibold text-sm text-gray-900">{opp.title}</h4>
+                    <Card key={opp.id} className="p-3 bg-muted border-border">
+                      <h4 className="font-semibold text-sm text-foreground">{opp.title}</h4>
                       <div className="flex gap-2 mt-1">
-                        <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
                           {opp.type}
                         </span>
                         {opp.location && (
-                          <span className="text-xs bg-gray-200 text-gray-700 px-2 py-1 rounded">
+                          <span className="text-xs bg-muted text-muted-foreground px-2 py-1 rounded border border-border">
                             📍 {opp.location}
                           </span>
                         )}
                       </div>
                       {opp.organization && (
-                        <p className="text-xs text-gray-600 mt-1">
+                        <p className="text-xs text-muted-foreground mt-1">
                           🏢 {opp.organization}
                         </p>
                       )}
                       {opp.description && (
-                        <p className="text-xs text-gray-700 mt-2">
+                        <p className="text-xs text-muted-foreground mt-2">
                           {opp.description.substring(0, 100)}...
                         </p>
                       )}
@@ -267,10 +303,10 @@ const DemoChat = () => {
 
         {isLoading && (
           <div className="flex justify-start">
-            <Card className="max-w-[80%] p-4 bg-white">
+            <Card className="max-w-[80%] p-4 bg-card border-border">
               <div className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                <p className="text-sm text-gray-600">Thinking...</p>
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <p className="text-sm text-muted-foreground">Thinking...</p>
               </div>
             </Card>
           </div>
@@ -281,7 +317,7 @@ const DemoChat = () => {
 
       {/* Quick Replies */}
       {messages.length <= 1 && (
-        <div className="px-4 py-2 flex gap-2 overflow-x-auto">
+        <div className="px-4 py-2 flex gap-2 overflow-x-auto bg-card border-t border-border">
           {["Jobs near me", "Free training", "Internships", "Scholarships", "Make money"].map((text) => (
             <Button
               key={text}
@@ -297,7 +333,7 @@ const DemoChat = () => {
       )}
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 bg-white px-4 py-4">
+      <div className="border-t border-border bg-card px-4 py-4">
         <div className="flex gap-2">
           <Input
             type="text"
@@ -320,7 +356,7 @@ const DemoChat = () => {
             )}
           </Button>
         </div>
-        <p className="text-xs text-gray-500 mt-2 text-center">
+        <p className="text-xs text-muted-foreground mt-2 text-center">
           Demo Mode - All responses are mocked for UI/UX testing
         </p>
       </div>

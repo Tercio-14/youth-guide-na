@@ -8,6 +8,9 @@ import { Card } from "@/components/ui/card";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Bookmark, ExternalLink, MapPin, Building2 } from "lucide-react";
+import { useEffect } from "react";
+import { speakPageWelcome } from "@/utils/tts";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const mockSavedOpportunities = [
   {
@@ -33,27 +36,36 @@ const mockSavedOpportunities = [
 const DemoSaved = () => {
   const navigate = useNavigate();
 
+  useEffect(() => {
+    setTimeout(() => {
+      const messageKey = mockSavedOpportunities.length > 0 ? 'demoSavedWelcome' : 'savedEmpty';
+      speakPageWelcome(messageKey);
+    }, 1000);
+  }, []);
+
   const handleUnsave = (id: string) => {
     toast.success("Removed from saved (demo mode)");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      <div className="bg-yellow-100 border-b border-yellow-300 py-2 text-center">
-        <p className="text-sm font-medium text-yellow-900">
+    <div className="min-h-screen bg-gradient-hero">
+      <div className="bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-300 dark:border-yellow-700 py-2 text-center">
+        <p className="text-sm font-medium text-yellow-900 dark:text-yellow-200">
           🧪 <strong>Demo Mode</strong> - Mock saved opportunities
         </p>
       </div>
 
       <div className="container mx-auto px-4 py-8 max-w-4xl">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/demo/chat")}
-          className="mb-4"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Chat
-        </Button>
+        <div className="flex items-center justify-between mb-4">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/demo/chat")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Chat
+          </Button>
+          <ThemeToggle />
+        </div>
 
         <div className="flex items-center gap-2 mb-6">
           <Bookmark className="h-6 w-6 text-blue-600" />
@@ -76,17 +88,17 @@ const DemoSaved = () => {
         ) : (
           <div className="space-y-4">
             {mockSavedOpportunities.map((opp) => (
-              <Card key={opp.id} className="p-6">
+          <Card key={opp.id} className="p-6">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
                       {opp.title}
                     </h3>
                     <div className="flex flex-wrap gap-2 mb-3">
-                      <span className="text-xs bg-blue-100 text-blue-700 px-3 py-1 rounded-full">
+                      <span className="text-xs bg-primary/10 text-primary px-3 py-1 rounded-full">
                         {opp.type}
                       </span>
-                      <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1 rounded-full flex items-center gap-1">
+                      <span className="text-xs bg-muted text-muted-foreground px-3 py-1 rounded-full border border-border flex items-center gap-1">
                         <MapPin className="h-3 w-3" />
                         {opp.location}
                       </span>
@@ -96,18 +108,18 @@ const DemoSaved = () => {
                     variant="ghost"
                     size="icon"
                     onClick={() => handleUnsave(opp.id)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
                   >
                     <Bookmark className="h-5 w-5 fill-current" />
                   </Button>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                   <Building2 className="h-4 w-4" />
                   <span>{opp.organization}</span>
                 </div>
 
-                <p className="text-sm text-gray-700 mb-4">{opp.description}</p>
+                <p className="text-sm text-muted-foreground mb-4">{opp.description}</p>
 
                 <div className="flex gap-2">
                   <Button
@@ -127,7 +139,7 @@ const DemoSaved = () => {
                   </Button>
                 </div>
 
-                <p className="text-xs text-gray-500 mt-3">
+                <p className="text-xs text-muted-foreground mt-3">
                   Saved on {opp.savedAt}
                 </p>
               </Card>
