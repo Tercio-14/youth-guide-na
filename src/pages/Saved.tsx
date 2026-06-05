@@ -3,13 +3,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Trash2, Share2, Bookmark, MapPin, Building2, ExternalLink, Calendar } from "lucide-react";
+import { ArrowLeft, Trash2, Share2, Bookmark, MapPin, Building2, ExternalLink, Calendar, WifiOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOffline, isNetworkError } from "@/contexts/OfflineContext";
 import { apiClient } from "@/utils/api";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { speakPageWelcome } from "@/utils/tts";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface SavedOpportunity {
   id: string;
@@ -27,19 +29,21 @@ interface SavedOpportunity {
 const Saved = () => {
   const navigate = useNavigate();
   const { token } = useAuth();
+  const { isOffline, savedOpportunities, removeOpportunityOffline, forceOfflineMode } = useOffline();
   const [savedOpps, setSavedOpps] = useState<SavedOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const fetchSavedOpportunities = async () => {
-      if (!token) {
+      if (!token && !isOffline) {
         navigate("/auth");
         return;
       }
 
       try {
         setLoading(true);
+<<<<<<< HEAD
         const response = await apiClient.get('/saved', token);
         setSavedOpps(response.opportunities || []);
         
@@ -48,8 +52,35 @@ const Saved = () => {
           const messageKey = (response.opportunities?.length || 0) > 0 ? 'savedWelcome' : 'savedEmpty';
           speakPageWelcome(messageKey);
         }, 1000);
+=======
+        
+        if (isOffline) {
+          // Load from offline storage
+          console.log('📴 [Saved] Loading saved opportunities from offline storage', {
+            count: savedOpportunities.length
+          });
+          setSavedOpps(savedOpportunities);
+        } else {
+          // Load from online API
+          const response = await apiClient.get('/saved', token);
+          setSavedOpps(response.opportunities || []);
+        }
+>>>>>>> origin/feature/offline
       } catch (error) {
         console.error('Failed to fetch saved opportunities:', error);
+        
+        // Check if it's a Firebase/network error - switch to offline mode and retry
+        if (!isOffline && isNetworkError(error)) {
+          console.log('🔌 [Saved] Network error detected, forcing offline mode');
+          forceOfflineMode();
+          
+          // Load from offline storage instead
+          setSavedOpps(savedOpportunities);
+          toast.info('📴 Switched to offline mode. Showing offline saved items.');
+          setLoading(false);
+          return;
+        }
+        
         toast.error("Failed to load saved opportunities");
       } finally {
         setLoading(false);
@@ -57,19 +88,37 @@ const Saved = () => {
     };
     
     fetchSavedOpportunities();
-  }, [token, navigate]);
+  }, [token, navigate, isOffline, savedOpportunities, forceOfflineMode]);
 
   const handleDelete = async (opportunityId: string) => {
-    if (!token) return;
+    if (!token && !isOffline) return;
 
     setDeletingIds(prev => new Set(prev).add(opportunityId));
 
     try {
-      await apiClient.delete(`/saved/${opportunityId}`, token);
-      setSavedOpps(prev => prev.filter(opp => opp.id !== opportunityId));
-      toast.success("Opportunity removed");
+      if (isOffline) {
+        // Remove from offline storage
+        console.log('📴 [Saved] Removing opportunity from offline storage', { opportunityId });
+        await removeOpportunityOffline(opportunityId);
+        setSavedOpps(prev => prev.filter(opp => opp.id !== opportunityId));
+        toast.success("Opportunity removed from offline storage");
+      } else {
+        // Remove from online API
+        await apiClient.delete(`/saved/${opportunityId}`, token);
+        setSavedOpps(prev => prev.filter(opp => opp.id !== opportunityId));
+        toast.success("Opportunity removed");
+      }
     } catch (error) {
       console.error('Failed to delete:', error);
+      
+      // Check if it's a Firebase/network error - switch to offline mode
+      if (!isOffline && isNetworkError(error)) {
+        console.log('🔌 [Saved] Network error detected, forcing offline mode');
+        forceOfflineMode();
+        toast.info('📴 Switched to offline mode. Please try again.');
+        return;
+      }
+      
       toast.error("Failed to remove opportunity");
     } finally {
       setDeletingIds(prev => {
@@ -130,6 +179,25 @@ const Saved = () => {
 
       {/* Content */}
       <div className="container mx-auto max-w-3xl p-4">
+        {/* Offline Mode Alert */}
+        {isOffline && (
+          <motion.div
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="mb-6"
+          >
+            <Alert variant="warning">
+              <WifiOff className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-medium">Viewing saved opportunities offline</p>
+                <p className="text-sm mt-1">
+                  You're seeing items saved to your device. Changes will sync when you're back online.
+                </p>
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+
         {loading ? (
           <motion.div
             initial={{ opacity: 0 }}
@@ -188,6 +256,12 @@ const Saved = () => {
                             <Badge variant="secondary" className="font-medium">
                               {item.type}
                             </Badge>
+                            {isOffline && (
+                              <Badge className="text-xs bg-orange-50 text-orange-700 border-orange-200">
+                                <WifiOff className="h-3 w-3 mr-1" />
+                                Offline Data
+                              </Badge>
+                            )}
                             {item.location && (
                               <Badge variant="outline">📍 {item.location}</Badge>
                             )}

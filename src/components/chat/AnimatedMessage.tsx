@@ -1,12 +1,14 @@
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { Bot, User, Bookmark, BookmarkCheck, ExternalLink, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Bot, User, Bookmark, BookmarkCheck, ExternalLink, ThumbsUp, ThumbsDown, WifiOff } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { apiClient } from "@/utils/api";
+import { saveOpportunity } from "@/utils/chat-api"; // OFFLINE MODE
 import { useAuth } from "@/contexts/AuthContext";
+import { useOffline } from "@/contexts/OfflineContext"; // OFFLINE MODE
 import { toast } from "sonner";
 
 interface Opportunity {
@@ -29,6 +31,7 @@ interface AnimatedMessageProps {
   opportunities?: Opportunity[];
   isLast?: boolean;
   conversationId?: string;
+  isOffline?: boolean; // OFFLINE MODE
 }
 
 export const AnimatedMessage = ({ 
@@ -37,17 +40,20 @@ export const AnimatedMessage = ({
   timestamp, 
   opportunities,
   isLast,
-  conversationId
+  conversationId,
+  isOffline = false // OFFLINE MODE
 }: AnimatedMessageProps) => {
   const isUser = role === "user";
   const { token } = useAuth();
+  const { saveOpportunityOffline } = useOffline(); // OFFLINE MODE
   const [savedStates, setSavedStates] = useState<Record<string, boolean>>({});
   const [savingStates, setSavingStates] = useState<Record<string, boolean>>({});
   const [feedbackStates, setFeedbackStates] = useState<Record<string, 'helpful' | 'not_relevant' | null>>({});
   const [feedbackSubmitting, setFeedbackSubmitting] = useState<Record<string, boolean>>({});
 
   const handleSaveToggle = async (opportunity: Opportunity) => {
-    if (!token) {
+    // OFFLINE MODE: Skip token check if offline
+    if (!isOffline && !token) {
       toast.error("Please log in to save opportunities");
       return;
     }
@@ -58,14 +64,28 @@ export const AnimatedMessage = ({
     try {
       if (isSaved) {
         // Unsave
-        await apiClient.delete(`/saved/${opportunity.id}`, token);
-        setSavedStates(prev => ({ ...prev, [opportunity.id]: false }));
-        toast.success("Opportunity removed from saved");
+        if (isOffline) {
+          // OFFLINE MODE: Remove from offline saved
+          // TODO: Implement removeOpportunityOffline in Stage 4
+          console.log('Offline unsave not yet implemented');
+          toast.info("Offline unsave will be implemented in next stage");
+        } else {
+          await apiClient.delete(`/saved/${opportunity.id}`, token);
+          setSavedStates(prev => ({ ...prev, [opportunity.id]: false }));
+          toast.success("Opportunity removed from saved");
+        }
       } else {
         // Save
-        await apiClient.post('/saved', { opportunity }, token);
-        setSavedStates(prev => ({ ...prev, [opportunity.id]: true }));
-        toast.success("Opportunity saved!");
+        if (isOffline) {
+          // OFFLINE MODE: Save to offline storage
+          await saveOpportunityOffline(opportunity);
+          setSavedStates(prev => ({ ...prev, [opportunity.id]: true }));
+          toast.success("💾 Opportunity saved offline (will sync when online)");
+        } else {
+          await apiClient.post('/saved', { opportunity }, token);
+          setSavedStates(prev => ({ ...prev, [opportunity.id]: true }));
+          toast.success("Opportunity saved!");
+        }
       }
     } catch (error) {
       console.error('Failed to toggle save:', error);
@@ -172,6 +192,19 @@ export const AnimatedMessage = ({
             {text}
           </p>
 
+          {/* OFFLINE MODE: Show offline badge for bot messages */}
+          {!isUser && isOffline && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+              className="mt-2 flex items-center gap-1.5 text-[11px] text-orange-600 dark:text-orange-400"
+            >
+              <WifiOff className="h-3 w-3" />
+              <span className="font-medium">Simulated Response (Offline Mode)</span>
+            </motion.div>
+          )}
+
           {/* Timestamp */}
           <span className={cn(
             "mt-1 flex items-center justify-end gap-1 text-[10px]",
@@ -244,6 +277,12 @@ export const AnimatedMessage = ({
                             🏢 {opp.organization}
                           </Badge>
                         )}
+                        {/* OFFLINE MODE: Show offline data badge */}
+                        {isOffline && (
+                          <Badge variant="outline" className="text-xs bg-orange-50 dark:bg-orange-950 text-orange-700 dark:text-orange-300 border-orange-200 dark:border-orange-800">
+                            📦 Offline Data
+                          </Badge>
+                        )}
                       </div>
 
                       {opp.description && (
@@ -252,29 +291,31 @@ export const AnimatedMessage = ({
                         </p>
                       )}
 
-                      {/* Feedback Buttons */}
-                      <div className="flex gap-2 mb-2">
-                        <Button
-                          variant={feedbackStates[opp.id] === 'helpful' ? 'default' : 'outline'}
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => handleFeedback(opp.id, 'helpful')}
-                          disabled={feedbackSubmitting[opp.id] || !!feedbackStates[opp.id]}
-                        >
-                          <ThumbsUp className="h-3 w-3 mr-1" />
-                          Helpful
-                        </Button>
-                        <Button
-                          variant={feedbackStates[opp.id] === 'not_relevant' ? 'default' : 'outline'}
-                          size="sm"
-                          className="h-7 text-xs"
-                          onClick={() => handleFeedback(opp.id, 'not_relevant')}
-                          disabled={feedbackSubmitting[opp.id] || !!feedbackStates[opp.id]}
-                        >
-                          <ThumbsDown className="h-3 w-3 mr-1" />
-                          Not Relevant
-                        </Button>
-                      </div>
+                      {/* Feedback Buttons - OFFLINE MODE: Disable when offline */}
+                      {!isOffline && (
+                        <div className="flex gap-2 mb-2">
+                          <Button
+                            variant={feedbackStates[opp.id] === 'helpful' ? 'default' : 'outline'}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleFeedback(opp.id, 'helpful')}
+                            disabled={feedbackSubmitting[opp.id] || !!feedbackStates[opp.id]}
+                          >
+                            <ThumbsUp className="h-3 w-3 mr-1" />
+                            Helpful
+                          </Button>
+                          <Button
+                            variant={feedbackStates[opp.id] === 'not_relevant' ? 'default' : 'outline'}
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleFeedback(opp.id, 'not_relevant')}
+                            disabled={feedbackSubmitting[opp.id] || !!feedbackStates[opp.id]}
+                          >
+                            <ThumbsDown className="h-3 w-3 mr-1" />
+                            Not Relevant
+                          </Button>
+                        </div>
+                      )}
 
                       <div className="flex items-center justify-between text-xs text-zinc-500">
                         {opp.date_posted && (

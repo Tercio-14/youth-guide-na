@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetTrigger, SheetContent } from "@/components/ui/sheet";
-import { Bookmark, Menu, User, MessageCircle, LogOut, PlusSquare, Bot } from "lucide-react";
+import { Bookmark, Menu, User, MessageCircle, LogOut, PlusSquare, Bot, WifiOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOffline, isNetworkError } from "@/contexts/OfflineContext"; // OFFLINE MODE
 import { apiClient } from "@/utils/api";
+import { sendChatMessage, createConversation, getAllConversations } from "@/utils/chat-api"; // OFFLINE MODE
 import { toast } from "sonner";
 import { AnimatedMessage } from "@/components/chat/AnimatedMessage";
 import { TypingIndicator } from "@/components/chat/TypingIndicator";
@@ -13,6 +15,8 @@ import { SuggestedActions } from "@/components/chat/SuggestedActions";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { tts, speakPageWelcome } from "@/utils/tts";
+import { OfflineBanner } from "@/components/OfflineBanner";
+import { useOnlineStatus } from "@/hooks/use-online-status";
 
 interface Message {
   id: string;
@@ -56,6 +60,7 @@ const QUICK_REPLIES = [
 const Chat = () => {
   const navigate = useNavigate();
   const { user, token, userProfile, logout } = useAuth();
+  const { isOffline, offlineUser, forceOfflineMode } = useOffline(); // OFFLINE MODE
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState("");
@@ -64,16 +69,23 @@ const Chat = () => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [recentConversations, setRecentConversations] = useState<ConversationSummary[]>([]);
   
+  // Network status detection
+  const { isOnline } = useOnlineStatus();
+  
+  // OFFLINE MODE: Use offline conversationId when offline
+  const getStorageKey = () => isOffline ? 'offlineConversationId' : 'currentConversationId';
+  
   // Get or create conversationId from localStorage
   const [conversationId, setConversationId] = useState<string>(() => {
-    const stored = localStorage.getItem('currentConversationId');
+    const storageKey = isOffline ? 'offlineConversationId' : 'currentConversationId';
+    const stored = localStorage.getItem(storageKey);
     if (stored) {
-      console.log('🔄 [Chat] Loaded existing conversation ID from localStorage:', stored);
+      console.log(`🔄 [Chat] Loaded existing conversation ID (${isOffline ? 'OFFLINE' : 'ONLINE'}):`, stored);
       return stored;
     }
     const newId = `conv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    console.log('🆔 [Chat] Generated new conversation ID:', newId);
-    localStorage.setItem('currentConversationId', newId);
+    console.log(`🆔 [Chat] Generated new conversation ID (${isOffline ? 'OFFLINE' : 'ONLINE'}):`, newId);
+    localStorage.setItem(storageKey, newId);
     return newId;
   });
 
@@ -84,12 +96,18 @@ const Chat = () => {
     userEmail: user?.email,
     profileName: userProfile?.firstName,
     conversationId,
+    isOffline, // OFFLINE MODE
+    offlineUser: offlineUser?.firstName, // OFFLINE MODE
     timestamp: new Date().toISOString()
   });
 
   // Initialize welcome message
   const initializeWelcomeMessage = () => {
-    const firstName = userProfile?.firstName || user?.displayName || 'there';
+    // OFFLINE MODE: Use offline user if available
+    const firstName = isOffline 
+      ? (offlineUser?.firstName || 'there')
+      : (userProfile?.firstName || user?.displayName || 'there');
+    
     const welcomeMessage: Message = {
       id: "welcome-" + Date.now(),
       role: "bot",
@@ -112,28 +130,32 @@ const Chat = () => {
     });
   };
 
-  // Load conversation history from backend
+  // Load conversation history from backend (auto routes offline/online)
   useEffect(() => {
     const loadConversationHistory = async () => {
-      if (!token || !conversationId) {
-        console.log('⚠️ [Chat] Skipping history load - no token or conversationId');
+      // When offline, we don't require token to load local history
+      if (!conversationId) {
+        console.log('⚠️ [Chat] Skipping history load - no conversationId');
         setIsLoadingHistory(false);
         return;
       }
 
       try {
         console.log('📜 [Chat] Loading conversation history', { conversationId });
+        // OFFLINE MODE: Use chat-api wrapper to route appropriately
+        const response = await getConversation(conversationId, isOffline);
         
-        const response = await apiClient.get(`/chat/conversation/${conversationId}`, token);
+        const messagesArr = (response?.messages) ? response.messages : response?.messages;
+        const msgs = Array.isArray(messagesArr) ? messagesArr : [];
         
-        if (response.messages && response.messages.length > 0) {
+        if (msgs.length > 0) {
           console.log('✅ [Chat] Loaded conversation history', {
-            messageCount: response.messages.length,
+            messageCount: msgs.length,
             conversationId
           });
 
           // Convert backend messages to frontend format
-          const loadedMessages: Message[] = response.messages.map((msg: { 
+          const loadedMessages: Message[] = msgs.map((msg: { 
             id?: string; 
             role: string; 
             content?: string; 
@@ -160,6 +182,13 @@ const Chat = () => {
           error: err.message,
           conversationId
         });
+        
+        // Check if it's a Firebase/network error - switch to offline mode
+        if (!isOffline && isNetworkError(error)) {
+          console.log('🔌 [Chat] Network error detected, forcing offline mode');
+          forceOfflineMode();
+        }
+        
         // If loading fails, just show welcome message
         initializeWelcomeMessage();
       } finally {
@@ -169,19 +198,20 @@ const Chat = () => {
 
     loadConversationHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversationId, token]);
+  }, [conversationId, token, forceOfflineMode, isOffline]);
 
-  // Load recent conversations
+  // Load recent conversations (auto routes offline/online)
   useEffect(() => {
     const loadRecentConversations = async () => {
-      if (!token) return;
+      // When offline, we can still load local conversations without token
+      if (!token && !isOffline) return;
 
       try {
         console.log('📋 [Chat] Loading recent conversations');
-        const response = await apiClient.get('/chat/conversations/recent?limit=5', token);
+        const conversations = await getAllConversations(isOffline);
         
-        if (response.conversations) {
-          setRecentConversations(response.conversations.map((conv: {
+        if (conversations) {
+          setRecentConversations(conversations.map((conv: {
             id: string;
             firstMessage: string;
             lastUpdated: string;
@@ -192,15 +222,21 @@ const Chat = () => {
             lastUpdated: new Date(conv.lastUpdated),
             messageCount: conv.messageCount
           })));
-          console.log('✅ [Chat] Loaded recent conversations', { count: response.conversations.length });
+          console.log('✅ [Chat] Loaded recent conversations', { count: conversations.length });
         }
       } catch (error) {
         console.error('💥 [Chat] Failed to load recent conversations', error);
+        
+        // Check if it's a Firebase/network error - switch to offline mode
+        if (!isOffline && isNetworkError(error)) {
+          console.log('🔌 [Chat] Network error detected, forcing offline mode');
+          forceOfflineMode();
+        }
       }
     };
 
     loadRecentConversations();
-  }, [token]);
+  }, [token, forceOfflineMode, isOffline]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -213,15 +249,17 @@ const Chat = () => {
       return;
     }
 
-    console.log('📝 [Chat] Sending message', {
+    console.log(`📝 [Chat] Sending message (${isOffline ? 'OFFLINE' : 'ONLINE'} mode)`, {
       message: text,
       conversationId,
       hasToken: !!token,
       hasProfile: !!userProfile,
-      userId: user?.uid
+      userId: user?.uid,
+      isOffline // OFFLINE MODE
     });
 
-    if (!token) {
+    // OFFLINE MODE: Skip token check if offline
+    if (!isOffline && !token) {
       console.error('❌ [Chat] No authentication token available');
       toast.error("Please log in to continue chatting");
       navigate("/auth");
@@ -242,26 +280,16 @@ const Chat = () => {
     console.log('🔄 [Chat] Starting chat API call...');
 
     try {
-      const chatData = {
-        message: text,
-        conversationId,
-        context: {
-          skills: userProfile?.skills || [],
-          interests: userProfile?.interests || [],
-          ageBracket: userProfile?.ageBracket,
-          firstName: userProfile?.firstName
-        }
-      };
-
-      console.log('📤 [Chat] Sending chat request with context', chatData);
-
-      const response = await apiClient.post('/chat', chatData, token);
+      // OFFLINE MODE: Use chat-api wrapper for automatic routing
+      const response = await sendChatMessage(text, conversationId, isOffline);
       
-      console.log('✅ [Chat] Received chat response', {
+      console.log(`✅ [Chat] Received chat response (${isOffline ? 'OFFLINE' : 'ONLINE'})`, {
         hasResponse: !!response.response,
         hasOpportunities: !!response.opportunities,
         opportunityCount: response.opportunities?.length || 0,
-        conversationId: response.conversationId
+        conversationId: response.conversationId,
+        isOffline: response.isOffline || response.offlineSimulation || false,
+        intent: response.intent
       });
 
       const botMessage: Message = {
@@ -304,20 +332,55 @@ const Chat = () => {
         userId: user?.uid
       });
 
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "bot",
-        text: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
-        timestamp: new Date(),
-      };
+      // Check if it's a Firebase/network error - switch to offline mode and retry
+      if (!isOffline && isNetworkError(error)) {
+        console.log('🔌 [Chat] Network error detected, switching to offline mode and retrying');
+        forceOfflineMode();
+        
+        // Retry in offline mode
+        toast.info('📴 Switched to offline mode. Retrying with simulated response...');
+        
+        setTimeout(async () => {
+          try {
+            const response = await sendChatMessage(text, conversationId, true); // Force offline mode
+            
+            const botMessage: Message = {
+              id: (Date.now() + 1).toString(),
+              role: "bot",
+              text: response.response || "I'm sorry, I couldn't generate a response right now. Please try again.",
+              timestamp: new Date(),
+              opportunities: response.opportunities || []
+            };
+            
+            setMessages((prev) => [...prev, botMessage]);
+            setIsTyping(false);
+          } catch (retryError) {
+            console.error('💥 [Chat] Offline retry also failed', retryError);
+            showErrorMessage();
+          }
+        }, 500);
+        
+        return; // Don't show error message yet
+      }
 
-      setMessages((prev) => [...prev, errorMessage]);
-      
-      toast.error("Chat service temporarily unavailable");
+      showErrorMessage();
     } finally {
-      setIsTyping(false);
       console.log('🏁 [Chat] Message handling completed');
+      setIsTyping(false);
     }
+  };
+  
+  // Helper to show error message
+  const showErrorMessage = () => {
+    const errorMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      role: "bot",
+      text: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.",
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, errorMessage]);
+    toast.error("Chat service temporarily unavailable");
   };
 
   const handleQuickReply = (reply: string) => {
@@ -389,6 +452,9 @@ const Chat = () => {
 
   return (
     <div className="flex h-screen flex-col">
+      {/* Offline/Online Status Banner */}
+      <OfflineBanner />
+      
       {/* Header */}
       <header className="border-b border-border bg-card px-4 py-3 shadow-soft">
         <div className="flex items-center justify-between">
@@ -403,7 +469,19 @@ const Chat = () => {
                 <div className="flex flex-col gap-6 h-full">
                   <div>
                     <p className="text-sm text-muted-foreground">Signed in as</p>
-                    <p className="font-semibold">{userProfile?.firstName || user?.email}</p>
+                    <p className="font-semibold">
+                      {isOffline 
+                        ? (offlineUser?.firstName || 'Offline User')
+                        : (userProfile?.firstName || user?.email)
+                      }
+                    </p>
+                    {/* OFFLINE MODE: Show offline badge in menu */}
+                    {isOffline && (
+                      <div className="mt-2 flex items-center gap-1.5 text-xs text-orange-600">
+                        <WifiOff className="h-3 w-3" />
+                        <span>Offline Mode</span>
+                      </div>
+                    )}
                   </div>
                   
                   {/* Recent Conversations Section */}
@@ -594,6 +672,7 @@ const Chat = () => {
                   opportunities={message.opportunities}
                   isLast={index === messages.length - 1}
                   conversationId={conversationId}
+                  isOffline={isOffline}
                 />
               ))}
 
@@ -627,6 +706,7 @@ const Chat = () => {
             onSend={() => handleSendMessage(inputText)}
             disabled={isTyping}
             placeholder="Ask me anything..."
+            isOffline={!isOnline}
           />
         </div>
       </div>

@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import { apiClient } from '../utils/api';
+import { useOffline, isNetworkError } from './OfflineContext';
 
 const AuthContext = createContext();
 
@@ -17,16 +18,62 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
+  
+  // Get offline state - but handle case where OfflineContext isn't ready yet
+  let offlineContext;
+  try {
+    offlineContext = useOffline();
+  } catch (e) {
+    // OfflineContext not available yet (happens during initial mount)
+    offlineContext = { isOffline: false, offlineUser: null };
+  }
+  
+  const { isOffline, offlineUser } = offlineContext;
 
   useEffect(() => {
-    console.log('🔐 [AuthContext] Setting up auth state listener');
+    console.log('🔐 [AuthContext] Setting up auth state listener', { isOffline });
     
+    // If offline, skip Firebase auth and use offline user
+    if (isOffline && offlineUser) {
+      console.log('📴 [AuthContext] Offline mode detected - using offline user', {
+        offlineUserName: offlineUser.firstName,
+        offlineUserEmail: offlineUser.email
+      });
+      
+      // Create a mock Firebase user object for compatibility
+      const mockUser = {
+        uid: offlineUser.id || 'offline-user',
+        email: offlineUser.email || 'offline@youthguide.na',
+        displayName: `${offlineUser.firstName} ${offlineUser.lastName}`,
+        emailVerified: true,
+        // Mock Firebase user methods
+        getIdToken: async () => 'offline-token',
+        reload: async () => {},
+        delete: async () => {},
+        isAnonymous: false,
+        metadata: {},
+        providerData: [],
+        refreshToken: 'offline-refresh-token',
+        tenantId: null,
+      };
+      
+      setUser(mockUser);
+      setToken('offline-token');
+      setUserProfile(offlineUser);
+      setLoading(false);
+      
+      console.log('✅ [AuthContext] Offline user authenticated successfully');
+      return;
+    }
+    
+    // Online mode - use Firebase authentication
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       console.log('🔄 [AuthContext] Auth state changed', {
         hasUser: !!user,
         userEmail: user?.email,
         userId: user?.uid,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        isOffline
       });
       
       if (user) {
@@ -58,10 +105,40 @@ export function AuthProvider({ children }) {
           }
         } catch (error) {
           console.error('💥 [AuthContext] Error getting user token:', {
-            error: error.message,
+            error: error?.message || String(error),
             userEmail: user?.email,
             userId: user?.uid
           });
+
+          // If the error looks like a network / Firebase error, switch the app to offline mode
+          try {
+            if (isNetworkError(error) && offlineContext?.forceOfflineMode) {
+              console.warn('🔌 [AuthContext] Network error while fetching token, forcing offline mode');
+              offlineContext.forceOfflineMode({ reason: 'auth-token-network-error' });
+
+              // If we have offline user data, restore it into auth state so user isn't logged out
+              if (offlineUser) {
+                console.log('📴 [AuthContext] Restoring offline user to avoid logout', { offlineUserEmail: offlineUser.email });
+                const mockUser = {
+                  uid: offlineUser.id || 'offline-user',
+                  email: offlineUser.email || 'offline@youthguide.na',
+                  displayName: `${offlineUser.firstName} ${offlineUser.lastName}`,
+                  emailVerified: true,
+                  getIdToken: async () => 'offline-token'
+                };
+                setUser(mockUser);
+                setToken('offline-token');
+                setUserProfile(offlineUser);
+                setLoading(false);
+                console.log('✅ [AuthContext] Offline user restored, preventing logout');
+                return;
+              }
+            }
+          } catch (innerErr) {
+            console.error('❌ [AuthContext] Error during network-error handling', innerErr);
+          }
+
+          // Default behavior: clear auth state
           setUser(null);
           setToken(null);
           setUserProfile(null);
@@ -78,10 +155,17 @@ export function AuthProvider({ children }) {
     });
 
     return unsubscribe;
-  }, []);
+  }, [isOffline, offlineUser]);
 
   const login = async (email, password) => {
-    console.log('🔓 [AuthContext] Login attempt started', { email });
+    console.log('🔓 [AuthContext] Login attempt started', { email, isOffline });
+    
+    // Block login attempts in offline mode
+    if (isOffline) {
+      console.warn('📴 [AuthContext] Login blocked - offline mode active');
+      throw new Error('Authentication requires an internet connection. Please try again when online.');
+    }
+    
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
       console.log('✅ [AuthContext] Login successful', {
@@ -101,7 +185,14 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (email, password) => {
-    console.log('📝 [AuthContext] Registration attempt started', { email });
+    console.log('📝 [AuthContext] Registration attempt started', { email, isOffline });
+    
+    // Block registration in offline mode
+    if (isOffline) {
+      console.warn('📴 [AuthContext] Registration blocked - offline mode active');
+      throw new Error('Account creation requires an internet connection. Please try again when online.');
+    }
+    
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       console.log('✅ [AuthContext] Registration successful', {
@@ -121,7 +212,14 @@ export function AuthProvider({ children }) {
   };
 
   const loginWithGoogle = async () => {
-    console.log('🔍 [AuthContext] Google sign-in attempt started');
+    console.log('🔍 [AuthContext] Google sign-in attempt started', { isOffline });
+    
+    // Block Google sign-in in offline mode
+    if (isOffline) {
+      console.warn('📴 [AuthContext] Google sign-in blocked - offline mode active');
+      throw new Error('Google sign-in requires an internet connection. Please try again when online.');
+    }
+    
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
@@ -143,8 +241,20 @@ export function AuthProvider({ children }) {
   const logout = async () => {
     console.log('🚪 [AuthContext] Logout attempt started', {
       currentUser: user?.email,
-      hasProfile: !!userProfile
+      hasProfile: !!userProfile,
+      isOffline
     });
+    
+    // In offline mode, just clear the local state
+    if (isOffline) {
+      console.log('📴 [AuthContext] Offline logout - clearing local state only');
+      setUser(null);
+      setToken(null);
+      setUserProfile(null);
+      console.log('✅ [AuthContext] Offline logout successful');
+      return;
+    }
+    
     try {
       await signOut(auth);
       setUserProfile(null);
@@ -162,9 +272,17 @@ export function AuthProvider({ children }) {
     console.log('🔄 [AuthContext] Updating user profile in context', {
       oldProfile: userProfile ? Object.keys(userProfile) : null,
       newProfile: profile ? Object.keys(profile) : null,
-      firstName: profile?.firstName
+      firstName: profile?.firstName,
+      isOffline
     });
     setUserProfile(profile);
+    
+    // If offline, also update the offline user in OfflineContext
+    if (isOffline && offlineContext?.updateOfflineUser) {
+      console.log('📴 [AuthContext] Updating offline user in OfflineContext');
+      offlineContext.updateOfflineUser(profile);
+    }
+    
     console.log('✅ [AuthContext] User profile updated in context');
   };
 
@@ -173,6 +291,7 @@ export function AuthProvider({ children }) {
     token,
     loading,
     userProfile,
+    isOffline, // Expose offline state for components
     login,
     register,
     loginWithGoogle,

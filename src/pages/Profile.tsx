@@ -6,13 +6,15 @@ import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, ArrowLeft, User as UserIcon, Sparkles } from "lucide-react";
+import { X, ArrowLeft, User as UserIcon, Sparkles, WifiOff, Cloud } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { useOffline, isNetworkError } from "@/contexts/OfflineContext";
 import { apiClient } from "@/utils/api";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { speakPageWelcome } from "@/utils/tts";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const SUGGESTED_SKILLS = [
   "Plumbing", "Electrician", "Carpentry", "Painting", "Cooking",
@@ -28,6 +30,7 @@ const SUGGESTED_INTERESTS = [
 const Profile = () => {
   const navigate = useNavigate();
   const { user, token, userProfile, updateUserProfile } = useAuth();
+  const { isOffline, offlineUser, updateOfflineUser, forceOfflineMode } = useOffline();
   const [firstName, setFirstName] = useState("");
   const [ageBracket, setAgeBracket] = useState("");
   const [location, setLocation] = useState("");
@@ -44,6 +47,8 @@ const Profile = () => {
     hasToken: !!token,
     hasProfile: !!userProfile,
     userEmail: user?.email,
+    isOffline,
+    hasOfflineUser: !!offlineUser,
     timestamp: new Date().toISOString()
   });
 
@@ -51,9 +56,12 @@ const Profile = () => {
   useEffect(() => {
     console.log('🔄 [Profile] useEffect triggered - checking for existing profile', {
       userProfile,
-      hasProfile: !!userProfile
+      hasProfile: !!userProfile,
+      isOffline,
+      offlineUser
     });
     
+<<<<<<< HEAD
     // Speak welcome message after a short delay
     setTimeout(() => {
       speakPageWelcome('profileWelcome');
@@ -68,16 +76,34 @@ const Profile = () => {
       setEmploymentStatus(userProfile.employmentStatus || "");
       setSkills(userProfile.skills || []);
       setInterests(userProfile.interests || []);
+=======
+    // Use offline user data when offline, otherwise use userProfile
+    const profileToLoad = isOffline ? offlineUser : userProfile;
+    
+    if (profileToLoad) {
+      console.log('📋 [Profile] Loading existing profile data', {
+        source: isOffline ? 'offline' : 'online',
+        profileToLoad
+      });
+      setFirstName(profileToLoad.firstName || "");
+      setAgeBracket(profileToLoad.ageBracket || "");
+      setLocation(profileToLoad.location || "");
+      setEducation(profileToLoad.education || "");
+      setEmploymentStatus(profileToLoad.employmentStatus || "");
+      setSkills(profileToLoad.skills || []);
+      setInterests(profileToLoad.interests || []);
+>>>>>>> origin/feature/offline
       setIsEditing(true);
       
       console.log('✅ [Profile] Profile data loaded into form', {
-        firstName: userProfile.firstName,
-        ageBracket: userProfile.ageBracket,
-        skillsCount: userProfile.skills?.length || 0,
-        interestsCount: userProfile.interests?.length || 0
+        firstName: profileToLoad.firstName,
+        ageBracket: profileToLoad.ageBracket,
+        skillsCount: profileToLoad.skills?.length || 0,
+        interestsCount: profileToLoad.interests?.length || 0,
+        source: isOffline ? 'offline storage' : 'online API'
       });
     }
-  }, [userProfile]);
+  }, [userProfile, isOffline, offlineUser]);
 
   const toggleSkill = (skill: string) => {
     if (skills.includes(skill)) {
@@ -118,6 +144,7 @@ const Profile = () => {
       skills: `${JSON.stringify(skills)} (${typeof skills}, length: ${skills?.length})`,
       interests: `${JSON.stringify(interests)} (${typeof interests}, length: ${interests?.length})`,
       isEditing,
+      isOffline,
       hasToken: !!token,
       userId: user?.uid
     });
@@ -133,7 +160,7 @@ const Profile = () => {
       return;
     }
 
-    if (!token) {
+    if (!token && !isOffline) {
       console.error('❌ [Profile] No authentication token available');
       toast.error("Authentication required. Please log in again.");
       navigate("/auth");
@@ -141,7 +168,7 @@ const Profile = () => {
     }
 
     setLoading(true);
-    console.log('🔄 [Profile] Starting profile save API call...');
+    console.log('🔄 [Profile] Starting profile save...', { isOffline });
     
     try {
       const profileData = {
@@ -154,33 +181,40 @@ const Profile = () => {
         interests
       };
       
-      console.log('📤 [Profile] Sending profile data to API', {
+      console.log('📤 [Profile] Prepared profile data', {
         ...profileData,
-        skillsDetailed: profileData.skills.map((s, i) => `[${i}]: "${s}"`),
-        interestsDetailed: profileData.interests.map((s, i) => `[${i}]: "${s}"`)
-      });
-      
-      console.log('🔍 [Profile] Raw profile data for API:', JSON.stringify(profileData, null, 2));
-
-      const response = await apiClient.post('/users/profile', profileData, token);
-      
-      console.log('✅ [Profile] Profile saved successfully', {
-        response,
-        isEditing,
-        duration: Date.now() - Date.now() // This will show in API client logs
+        mode: isOffline ? 'offline' : 'online'
       });
 
-      // Update the auth context with the new profile
-      if (response.profile) {
-        updateUserProfile(response.profile);
-        console.log('🔄 [Profile] Updated auth context with new profile data');
+      if (isOffline) {
+        // Save to offline storage
+        console.log('📴 [Profile] Saving to offline storage');
+        await updateOfflineUser(profileData);
+        
+        toast.success(
+          `✅ Profile saved offline! Changes will sync when you're back online.`
+        );
+        
+        console.log('✅ [Profile] Offline profile saved successfully');
+      } else {
+        // Save to online API
+        console.log('🌐 [Profile] Sending profile data to API');
+        const response = await apiClient.post('/users/profile', profileData, token);
+        
+        console.log('✅ [Profile] Profile saved successfully', { response });
+
+        // Update the auth context with the new profile
+        if (response.profile) {
+          updateUserProfile(response.profile);
+          console.log('🔄 [Profile] Updated auth context with new profile data');
+        }
+
+        toast.success(
+          isEditing 
+            ? `Profile updated successfully, ${firstName}!` 
+            : `Welcome, ${firstName}! Let's find opportunities for you.`
+        );
       }
-
-      toast.success(
-        isEditing 
-          ? `Profile updated successfully, ${firstName}!` 
-          : `Welcome, ${firstName}! Let's find opportunities for you.`
-      );
       
       console.log('🎯 [Profile] Navigating to chat page');
       navigate("/chat");
@@ -190,9 +224,18 @@ const Profile = () => {
         error: error.message,
         stack: error.stack,
         profileData: { firstName, ageBracket, skills, interests },
+        isOffline,
         hasToken: !!token,
         userId: user?.uid
       });
+      
+      // Check if it's a Firebase/network error - switch to offline mode
+      if (!isOffline && isNetworkError(error)) {
+        console.log('🔌 [Profile] Network error detected, forcing offline mode');
+        forceOfflineMode();
+        toast.info('📴 Switched to offline mode. Please try saving again.');
+        return;
+      }
       
       toast.error(
         error.message || "Failed to save profile. Please try again."
@@ -226,6 +269,25 @@ const Profile = () => {
       </motion.header>
 
       <div className="mx-auto max-w-2xl p-4 py-8">
+        {/* Offline Mode Alert */}
+        {isOffline && (
+          <motion.div
+            initial={{ y: -10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="mb-6"
+          >
+            <Alert variant="warning">
+              <WifiOff className="h-4 w-4" />
+              <AlertDescription>
+                <p className="font-medium">You're editing your profile offline</p>
+                <p className="text-sm mt-1">
+                  Your changes will be saved locally and synced when you're back online.
+                </p>
+              </AlertDescription>
+            </Alert>
+          </motion.div>
+        )}
+
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -490,10 +552,21 @@ const Profile = () => {
                 {loading ? (
                   <span className="flex items-center">
                     <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                    {isEditing ? "Updating Profile..." : "Saving Profile..."}
+                    {isOffline 
+                      ? "Saving Offline..." 
+                      : isEditing 
+                        ? "Updating Profile..." 
+                        : "Saving Profile..."}
                   </span>
                 ) : (
-                  isEditing ? "Update Profile" : "Start Finding Opportunities"
+                  <span className="flex items-center justify-center gap-2">
+                    {isOffline && <WifiOff className="h-4 w-4" />}
+                    {isOffline 
+                      ? "Save Profile (Offline)" 
+                      : isEditing 
+                        ? "Update Profile" 
+                        : "Start Finding Opportunities"}
+                  </span>
                 )}
               </Button>
             </motion.div>
