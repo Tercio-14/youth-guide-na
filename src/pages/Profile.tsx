@@ -61,25 +61,14 @@ const Profile = () => {
       offlineUser
     });
     
-<<<<<<< HEAD
     // Speak welcome message after a short delay
     setTimeout(() => {
       speakPageWelcome('profileWelcome');
     }, 1000);
-    
-    if (userProfile) {
-      console.log('📋 [Profile] Loading existing profile data', userProfile);
-      setFirstName(userProfile.firstName || "");
-      setAgeBracket(userProfile.ageBracket || "");
-      setLocation(userProfile.location || "");
-      setEducation(userProfile.education || "");
-      setEmploymentStatus(userProfile.employmentStatus || "");
-      setSkills(userProfile.skills || []);
-      setInterests(userProfile.interests || []);
-=======
+
     // Use offline user data when offline, otherwise use userProfile
     const profileToLoad = isOffline ? offlineUser : userProfile;
-    
+
     if (profileToLoad) {
       console.log('📋 [Profile] Loading existing profile data', {
         source: isOffline ? 'offline' : 'online',
@@ -92,7 +81,6 @@ const Profile = () => {
       setEmploymentStatus(profileToLoad.employmentStatus || "");
       setSkills(profileToLoad.skills || []);
       setInterests(profileToLoad.interests || []);
->>>>>>> origin/feature/offline
       setIsEditing(true);
       
       console.log('✅ [Profile] Profile data loaded into form', {

@@ -43,29 +43,26 @@ const Saved = () => {
 
       try {
         setLoading(true);
-<<<<<<< HEAD
-        const response = await apiClient.get('/saved', token);
-        setSavedOpps(response.opportunities || []);
-        
-        // Speak welcome message after loading
-        setTimeout(() => {
-          const messageKey = (response.opportunities?.length || 0) > 0 ? 'savedWelcome' : 'savedEmpty';
-          speakPageWelcome(messageKey);
-        }, 1000);
-=======
-        
+
+        let loadedOpps: SavedOpportunity[];
         if (isOffline) {
           // Load from offline storage
           console.log('📴 [Saved] Loading saved opportunities from offline storage', {
             count: savedOpportunities.length
           });
-          setSavedOpps(savedOpportunities);
+          loadedOpps = savedOpportunities;
         } else {
           // Load from online API
           const response = await apiClient.get('/saved', token);
-          setSavedOpps(response.opportunities || []);
+          loadedOpps = response.opportunities || [];
         }
->>>>>>> origin/feature/offline
+        setSavedOpps(loadedOpps);
+
+        // Speak welcome message after loading
+        setTimeout(() => {
+          const messageKey = loadedOpps.length > 0 ? 'savedWelcome' : 'savedEmpty';
+          speakPageWelcome(messageKey);
+        }, 1000);
       } catch (error) {
         console.error('Failed to fetch saved opportunities:', error);
         
