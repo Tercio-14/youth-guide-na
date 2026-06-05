@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/utils/api";
 import { toast } from "sonner";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { speakPageWelcome } from "@/utils/tts";
 
 interface SavedOpportunity {
   id: string;
@@ -41,6 +42,12 @@ const Saved = () => {
         setLoading(true);
         const response = await apiClient.get('/saved', token);
         setSavedOpps(response.opportunities || []);
+        
+        // Speak welcome message after loading
+        setTimeout(() => {
+          const messageKey = (response.opportunities?.length || 0) > 0 ? 'savedWelcome' : 'savedEmpty';
+          speakPageWelcome(messageKey);
+        }, 1000);
       } catch (error) {
         console.error('Failed to fetch saved opportunities:', error);
         toast.error("Failed to load saved opportunities");

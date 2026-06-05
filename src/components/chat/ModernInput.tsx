@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Paperclip, Smile } from "lucide-react";
+import { Send, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { VoiceToggle } from "@/components/VoiceToggle";
 
 interface ModernInputProps {
   value: string;
@@ -54,16 +55,8 @@ export const ModernInput = ({
         "p-2"
       )}
     >
-      {/* Emoji Button (Optional) */}
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className="shrink-0 size-9 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-700"
-        disabled={disabled}
-      >
-        <Smile className="size-5 text-zinc-500" />
-      </Button>
+      {/* Voice Toggle Button */}
+      <VoiceToggle />
 
       {/* Textarea */}
       <div className="flex-1 relative">

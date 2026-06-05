@@ -14,6 +14,13 @@ import Saved from "./pages/Saved";
 import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 
+// Demo pages (no auth required)
+import DemoLanding from "./pages/demo/DemoLanding";
+import DemoAuth from "./pages/demo/DemoAuth";
+import DemoChat from "./pages/demo/DemoChat";
+import DemoProfile from "./pages/demo/DemoProfile";
+import DemoSaved from "./pages/demo/DemoSaved";
+
 const queryClient = new QueryClient();
 
 // Application startup logging
@@ -33,6 +40,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Production Routes */}
             <Route path="/" element={<Landing />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={
@@ -55,6 +63,14 @@ const App = () => (
                 <Admin />
               </ProtectedRoute>
             } />
+            
+            {/* Demo/Test Routes - No Authentication */}
+            <Route path="/demo" element={<DemoLanding />} />
+            <Route path="/demo/auth" element={<DemoAuth />} />
+            <Route path="/demo/chat" element={<DemoChat />} />
+            <Route path="/demo/profile" element={<DemoProfile />} />
+            <Route path="/demo/saved" element={<DemoSaved />} />
+            
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

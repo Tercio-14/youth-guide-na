@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiClient } from "@/utils/api";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { speakPageWelcome } from "@/utils/tts";
 
 const SUGGESTED_SKILLS = [
   "Plumbing", "Electrician", "Carpentry", "Painting", "Cooking",
@@ -52,6 +53,11 @@ const Profile = () => {
       userProfile,
       hasProfile: !!userProfile
     });
+    
+    // Speak welcome message after a short delay
+    setTimeout(() => {
+      speakPageWelcome('profileWelcome');
+    }, 1000);
     
     if (userProfile) {
       console.log('📋 [Profile] Loading existing profile data', userProfile);
