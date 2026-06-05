@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { OfflineProvider } from "./contexts/OfflineContext";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { AdminRoute } from "./components/AdminRoute";
 import "./utils/debug.js";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -52,9 +53,9 @@ const App = () => (
                 </ProtectedRoute>
               } />
               <Route path="/admin" element={
-                <ProtectedRoute>
+                <AdminRoute>
                   <Admin />
-                </ProtectedRoute>
+                </AdminRoute>
               } />
 
               {/* Demo/Test Routes - No Authentication */}

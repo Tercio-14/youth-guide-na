@@ -68,6 +68,7 @@ const Chat = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [recentConversations, setRecentConversations] = useState<ConversationSummary[]>([]);
+  const [savedStatus, setSavedStatus] = useState<Record<string, boolean>>({});
   
   // Network status detection
   const { isOnline } = useOnlineStatus();
@@ -199,6 +200,28 @@ const Chat = () => {
     loadConversationHistory();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, token, forceOfflineMode, isOffline]);
+
+  // Hydrate saved/bookmark status for all opportunities shown in current messages
+  useEffect(() => {
+    const hydrateBookmarks = async () => {
+      if (!token || messages.length === 0) return;
+      const allIds = new Set<string>();
+      messages.forEach((msg) => {
+        msg.opportunities?.forEach((opp) => { if (opp.id) allIds.add(opp.id); });
+      });
+      if (allIds.size === 0) return;
+      try {
+        const result = await apiClient.post('/saved/batch-check', { opportunityIds: Array.from(allIds) }, token);
+        if (result.savedStatus) {
+          setSavedStatus(result.savedStatus);
+        }
+      } catch (err) {
+        console.warn('[Chat] Failed to hydrate saved status:', err);
+      }
+    };
+    hydrateBookmarks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, token]);
 
   // Load recent conversations (auto routes offline/online)
   useEffect(() => {

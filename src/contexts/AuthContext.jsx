@@ -18,6 +18,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
   const [userProfile, setUserProfile] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   
   // Get offline state - but handle case where OfflineContext isn't ready yet
   let offlineContext;
@@ -79,9 +80,12 @@ export function AuthProvider({ children }) {
       if (user) {
         try {
           console.log('🎫 [AuthContext] Getting ID token for user:', user.email);
-          const token = await user.getIdToken();
+          const idTokenResult = await user.getIdTokenResult();
+          const token = idTokenResult.token;
+          const adminClaim = idTokenResult.claims.admin === true;
           setUser(user);
           setToken(token);
+          setIsAdmin(adminClaim);
           
           console.log('✅ [AuthContext] User authenticated, fetching profile...');
           
@@ -148,6 +152,7 @@ export function AuthProvider({ children }) {
         setUser(null);
         setToken(null);
         setUserProfile(null);
+        setIsAdmin(false);
       }
       
       setLoading(false);
@@ -251,6 +256,7 @@ export function AuthProvider({ children }) {
       setUser(null);
       setToken(null);
       setUserProfile(null);
+      setIsAdmin(false);
       console.log('✅ [AuthContext] Offline logout successful');
       return;
     }
@@ -291,7 +297,8 @@ export function AuthProvider({ children }) {
     token,
     loading,
     userProfile,
-    isOffline, // Expose offline state for components
+    isAdmin,
+    isOffline,
     login,
     register,
     loginWithGoogle,

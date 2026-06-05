@@ -159,10 +159,25 @@ class ApiClient {
     });
   }
 
-  async delete(endpoint, token = null) {
+  async delete(endpoint, token = null, data = null) {
     return this.request(endpoint, {
       method: 'DELETE',
-      headers: token ? { Authorization: `Bearer ${token}` } : {}
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      ...(data ? { body: JSON.stringify(data) } : {}),
+    });
+  }
+
+  async patch(endpoint, data, token = null) {
+    return this.request(endpoint, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
   }
 
